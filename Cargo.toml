@@ -1,0 +1,17 @@
+[package]
+name = "strtools"
+authors = ["Erik Bünnig <business.erik.buennig@protonmail.com>"]
+description = "A rust library containing various string utilities"
+keywords = ["str", "string", "escaping"]
+categories = ["algorithms", "parsing", "text-processing"]
+
+repository = "https://github.com/ErikBuennig/strtools/"
+license-file = "LICENSE"
+readme = "README.md"
+
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
