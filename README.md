@@ -1,6 +1,6 @@
 # strtools
 **strtools** is a rust library for various helpful string extensions. It is under active
-development and adding more features are planned, criticism and contributions are welcome.
+development and adding more features is planned, criticism and contributions are welcome.
 
 ## Examples
 ```rust
