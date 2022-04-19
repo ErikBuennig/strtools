@@ -124,7 +124,7 @@ mod tests {
     use crate::StrTools;
 
     macro_rules! test_impl {
-        ($split:expr; $from:literal => $($to:literal),+) => {
+        ($split:expr; $from:literal => [$($to:literal),+]) => {
             assert_eq!(
                 $from
                     .split_non_escaped('\\', &$split)
@@ -133,7 +133,7 @@ mod tests {
                 vec![$($to),+]
             )
         };
-        ($from:literal => $($to:literal),+) => {
+        ($from:literal => [$($to:literal),+]) => {
             assert_eq!(
                 $from
                     .split_non_escaped('\\', &[':'])
@@ -156,41 +156,41 @@ mod tests {
 
     #[test]
     fn no_escape() {
-        test_impl!(r"aaaaa:bbbbb" => "aaaaa", "bbbbb");
+        test_impl!(r"aaaaa:bbbbb" => ["aaaaa", "bbbbb"]);
     }
 
     #[test]
     fn multiple() {
-        test_impl!(['/', ':']; r"aaaaa/bbb:bb" => "aaaaa", "bbb", "bb");
-        test_impl!(['/', ':']; r"aaaaa/bbb\:bb" => "aaaaa", "bbb:bb");
-        test_impl!(['/', ':']; r"aaaaa\/bbb\:bb" => "aaaaa/bbb:bb");
+        test_impl!(['/', ':']; r"aaaaa/bbb:bb" => ["aaaaa", "bbb", "bb"]);
+        test_impl!(['/', ':']; r"aaaaa/bbb\:bb" => ["aaaaa", "bbb:bb"]);
+        test_impl!(['/', ':']; r"aaaaa\/bbb\:bb" => ["aaaaa/bbb:bb"]);
     }
 
     #[test]
     fn single_escape() {
-        test_impl!(r"aa\:aa:bbbb" => "aa:aa", "bbbb");
-        test_impl!(r"\:aaaa:bbbb" => ":aaaa", "bbbb");
-        test_impl!(r"aaaa\::bbbb" => "aaaa:", "bbbb");
-        test_impl!(r"aaaa:bb\:bb" => "aaaa", "bb:bb");
-        test_impl!(r"aaaa:\:bbbb" => "aaaa", ":bbbb");
-        test_impl!(r"aaaa:bbbb\:" => "aaaa", "bbbb:");
+        test_impl!(r"aa\:aa:bbbb" => ["aa:aa", "bbbb"]);
+        test_impl!(r"\:aaaa:bbbb" => [":aaaa", "bbbb"]);
+        test_impl!(r"aaaa\::bbbb" => ["aaaa:", "bbbb"]);
+        test_impl!(r"aaaa:bb\:bb" => ["aaaa", "bb:bb"]);
+        test_impl!(r"aaaa:\:bbbb" => ["aaaa", ":bbbb"]);
+        test_impl!(r"aaaa:bbbb\:" => ["aaaa", "bbbb:"]);
     }
 
     #[test]
     fn double_escapes() {
-        test_impl!(r"aaaa\\:bbbb" => r"aaaa\", "bbbb");
-        test_impl!(r"aaaa\\\:bbbb" => r"aaaa\:bbbb");
-        test_impl!(r"aaaa\\\\:bbbb" => r"aaaa\\", "bbbb");
-        test_impl!(r"aaaa\\\\\:bbbb" => r"aaaa\\:bbbb");
+        test_impl!(r"aaaa\\:bbbb" => [r"aaaa\", "bbbb"]);
+        test_impl!(r"aaaa\\\:bbbb" => [r"aaaa\:bbbb"]);
+        test_impl!(r"aaaa\\\\:bbbb" => [r"aaaa\\", "bbbb"]);
+        test_impl!(r"aaaa\\\\\:bbbb" => [r"aaaa\\:bbbb"]);
     }
 
     #[test]
     fn ignore_other_escapes() {
-        test_impl!(r"aa\.aa:bbbbb" => r"aa\.aa", "bbbbb");
-        test_impl!(r"\.aaaa:bbbbb" => r"\.aaaa", "bbbbb");
-        test_impl!(r"aaaa\.:bbbbb" => r"aaaa\.", "bbbbb");
-        test_impl!(r"aaaa:\.bbbbb" => "aaaa", r"\.bbbbb");
-        test_impl!(r"aaaa:bbbbb\." => "aaaa", r"bbbbb\.");
+        test_impl!(r"aa\.aa:bbbbb" => [r"aa\.aa", "bbbbb"]);
+        test_impl!(r"\.aaaa:bbbbb" => [r"\.aaaa", "bbbbb"]);
+        test_impl!(r"aaaa\.:bbbbb" => [r"aaaa\.", "bbbbb"]);
+        test_impl!(r"aaaa:\.bbbbb" => ["aaaa", r"\.bbbbb"]);
+        test_impl!(r"aaaa:bbbbb\." => ["aaaa", r"bbbbb\."]);
     }
 
     #[test]
@@ -224,20 +224,20 @@ mod tests {
         #[test]
         fn trailing_ignored_escape() {
             // the trailing escape caused the split to not include the last char
-            test_impl!(['/']; r"test\d" => r"test\d");
+            test_impl!(['/']; r"test\d" => [r"test\d"]);
         }
 
         #[test]
         fn escaped() {
             // the escape was not correctly removed
-            test_impl!(['/']; r"^b\/(.*)$/d\/$1" => r"^b/(.*)$", "d/$1");
+            test_impl!(['/']; r"^b\/(.*)$/d\/$1" => [r"^b/(.*)$", "d/$1"]);
         }
 
         #[test]
         fn ignored_escape_offset() {
             // multiple subsequent to-be-ignored escape sequences were not properly being split
-            // accross an resulted in more parts than expected as well as missing chars
-            test_impl!(['/']; r".*s(\d\d)e(\d\d[a-d])/S$1E$2" => r".*s(\d\d)e(\d\d[a-d])", "S$1E$2");
+            // and resulted in more parts than expected as well as missing chars
+            test_impl!(['/']; r".*s(\d\d)e(\d\d[a-d])/S$1E$2" => [r".*s(\d\d)e(\d\d[a-d])", "S$1E$2"]);
         }
     }
 }
