@@ -1,4 +1,4 @@
-use std::{borrow::Cow, iter::Peekable, mem, str::CharIndices};
+use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 
 /// An error type that indicates that a delimiter and an escape char cannot be the same.
 #[derive(Debug)]
@@ -56,7 +56,7 @@ impl<'s, 'd> Iterator for SplitNonEscaped<'s, 'd> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((idx, ch)) = self.iter.next() {
             // escape
-            if ch == self.esc && let Some(_) = self.iter.peek() {
+            if ch == self.esc && self.iter.peek().is_some() {
                 let (next_idx, escaped) = self.iter.next().unwrap();
 
                 let mutate = self.curr.as_mut().unwrap().to_mut();
@@ -71,10 +71,8 @@ impl<'s, 'd> Iterator for SplitNonEscaped<'s, 'd> {
 
             // normal delimiter
             if self.delims.contains(&ch) {
-                let mut yielded = Some(Cow::Borrowed(""));
-                mem::swap(&mut yielded, &mut self.curr);
                 self.done = idx + ch.len_utf8();
-                return yielded;
+                return self.curr.replace(Cow::Borrowed(""));
             }
 
             // regular char
@@ -87,28 +85,24 @@ impl<'s, 'd> Iterator for SplitNonEscaped<'s, 'd> {
                 let _ = self.iter.next();
             }
 
-            if self.curr.as_mut().unwrap().is_borrowed() {
-                self.curr = Some(Cow::Borrowed(&self.input[self.done..jump]));
+            let remaining = &self.input[self.done..jump];
+            let curr = self.curr.as_mut().unwrap();
+            if curr.is_borrowed() {
+                *curr = Cow::Borrowed(remaining);
             } else {
-                self.curr
-                    .as_mut()
-                    .unwrap()
-                    .to_mut()
-                    .push_str(&self.input[self.done..jump]);
+                curr.to_mut().push_str(remaining);
             }
 
             self.done = jump;
         }
 
         if self.done < self.input.len() {
-            if self.curr.as_mut().unwrap().is_borrowed() {
-                self.curr = Some(Cow::Borrowed(&self.input[self.done..self.input.len()]));
+            let remaining = &self.input[self.done..self.input.len()];
+            let curr = self.curr.as_mut().unwrap();
+            if curr.is_borrowed() {
+                *curr = Cow::Borrowed(remaining);
             } else {
-                self.curr
-                    .as_mut()
-                    .unwrap()
-                    .to_mut()
-                    .push_str(&self.input[self.done..self.input.len()]);
+                curr.to_mut().push_str(remaining);
             }
 
             self.done = self.input.len();
