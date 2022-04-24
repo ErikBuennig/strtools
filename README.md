@@ -8,7 +8,7 @@ use strtools::StrTools;
 
 // split a string by some separator but ignore escaped ones
 let parts: Vec<_> = r"this string\ is split by\ spaces unless they are\ escaped"
-    .split_non_escaped(&[' '], '\\')
+    .split_non_escaped('\\', &[' '])
     .collect();
 
 assert_eq!(
