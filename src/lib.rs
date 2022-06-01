@@ -3,12 +3,12 @@
 //!
 //! # Examples
 //! ```
-//! # use strtools::StrTools;
-//! # use std::error::Error;
-//! # fn main() -> Result<(), Box<dyn Error>> {
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use strtools::StrTools;
+//!
 //! // split a string by some separator but ignore escaped ones
 //! let parts: Vec<_> = r"this string\ is split by\ spaces unless they are\ escaped"
-//!     .split_non_escaped('\\', &[' '])?
+//!     .split_non_escaped_sanitize('\\', &[' '])?
 //!     .collect();
 //!
 //! assert_eq!(
@@ -39,8 +39,6 @@ mod sealed {
 
 /// The main trait of this crate, providing various extension methods for [str].
 /// See the individual function documentation for more info.
-///
-/// [crate_doc]: crate
 pub trait StrTools: sealed::Sealed {
     /// Splits a [str] by the given delimiters unless they are precided by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimters and the
@@ -57,11 +55,11 @@ pub trait StrTools: sealed::Sealed {
     ///
     /// # Examples
     /// ```
-    /// # use strtools::StrTools;
-    /// # use std::error::Error;
-    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use strtools::StrTools;
+    ///
     /// let value = r"Pa\rt0:Part1:Part2\:StillPart2";
-    /// let parts: Vec<_> = value.split_non_escaped('\\', &[':'])?.collect();
+    /// let parts: Vec<_> = value.split_non_escaped_sanitize('\\', &[':'])?.collect();
     ///
     /// // notice that the escape char was removed in Part2 but not in Part1 as it's just used as
     /// // an indicator for escaping the delimiters or escapes themselves
@@ -69,19 +67,19 @@ pub trait StrTools: sealed::Sealed {
     /// # Ok(())
     /// # }
     /// ```
-    fn split_non_escaped<'d>(
+    fn split_non_escaped_sanitize<'d>(
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<split::SplitNonEscaped<'_, 'd>, split::EscapeIsDelimiterError>;
+    ) -> Result<split::SplitNonEscapedSanitize<'_, 'd>, split::EscapeIsDelimiterError>;
 }
 
 impl StrTools for str {
-    fn split_non_escaped<'d>(
+    fn split_non_escaped_sanitize<'d>(
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<split::SplitNonEscaped<'_, 'd>, split::EscapeIsDelimiterError> {
-        split::non_escaped(self, esc, delims)
+    ) -> Result<split::SplitNonEscapedSanitize<'_, 'd>, split::EscapeIsDelimiterError> {
+        split::non_escaped_sanitize(self, esc, delims)
     }
 }

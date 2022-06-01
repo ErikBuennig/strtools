@@ -1,31 +1,34 @@
 use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 
 /// An error type that indicates that a delimiter and an escape char were the same
-#[derive(Debug)]
-pub struct EscapeIsDelimiterError(());
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[error("a delimiter cannot be it's own escape char {0}")]
+pub struct EscapeIsDelimiterError(char);
 
-impl std::fmt::Display for EscapeIsDelimiterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("a delimiter cannot be it's own escape char")
-    }
-}
-
-impl std::error::Error for EscapeIsDelimiterError {}
-
-/// Returns an [Iterator] over slices of a [str] separated by unescaped chars from `delims`.
+/// Splits a [str] by the given delimiters unless they are precided by an escape.
+/// Escapes before significant chars are removed, significant chars are the delimters and the
+/// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
+///
+/// # Errors
+/// Returns an Error if `delims` contains `esc`
+///
+/// # Complexity & Allocation
+/// This algorithm requires `O(n * m)` time where `n` is the length of the input string and `m`
+/// is the length of `delims`. If no escapes are encountered in a part, no allocations are done and
+/// the part is borrowed, otherwise a [String] and all but the escape chars are copied over.
 ///
 /// # Examples
 /// ```
 /// use strtools::split;
-/// # use std::error::Error;
-/// # fn main() -> Result<(), Box<dyn Error>> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // split a string by some separator but ignore escaped ones
-/// let parts: Vec<_> = split::non_escaped(
+/// let parts: Vec<_> = split::non_escaped_sanitize(
 ///     r"this string\ is split by\ spaces unless they are\ escaped",
 ///     '\\',
 ///     &[' ']
 /// )?.collect();
 ///
+/// // the splits are sanitized, the excapes are removed
 /// assert_eq!(
 ///     parts,
 ///     [
@@ -41,13 +44,13 @@ impl std::error::Error for EscapeIsDelimiterError {}
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped<'s, 'd>(
+pub fn non_escaped_sanitize<'s, 'd>(
     input: &'s str,
     esc: char,
     delims: &'d [char],
-) -> Result<SplitNonEscaped<'s, 'd>, EscapeIsDelimiterError> {
+) -> Result<SplitNonEscapedSanitize<'s, 'd>, EscapeIsDelimiterError> {
     if !delims.contains(&esc) {
-        Ok(SplitNonEscaped {
+        Ok(SplitNonEscapedSanitize {
             input,
             done: 0,
             esc,
@@ -56,14 +59,17 @@ pub fn non_escaped<'s, 'd>(
             curr: Some(Cow::Borrowed("")),
         })
     } else {
-        Err(EscapeIsDelimiterError(()))
+        Err(EscapeIsDelimiterError(esc))
     }
 }
 
-/// An [Iterator] that yields parts of a [str] that are separated by a delimiter.
-/// This struct is created by the [`non_escaped`] method, See it's documentation for more info.
+// TODO: reduce unwraps, technically curr can be local and something else can be used to check if
+//       it's finished
+
+/// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
+/// created by the [`non_escaped_sanitize`] method, See it's documentation for more info.
 #[derive(Debug)]
-pub struct SplitNonEscaped<'s, 'd> {
+pub struct SplitNonEscapedSanitize<'s, 'd> {
     input: &'s str,
     done: usize,
     esc: char,
@@ -72,7 +78,7 @@ pub struct SplitNonEscaped<'s, 'd> {
     curr: Option<Cow<'s, str>>,
 }
 
-impl<'s, 'd> Iterator for SplitNonEscaped<'s, 'd> {
+impl<'s, 'd> Iterator for SplitNonEscapedSanitize<'s, 'd> {
     type Item = Cow<'s, str>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -140,34 +146,32 @@ mod tests {
     use crate::StrTools;
 
     macro_rules! test_impl {
-        ($split:expr; $from:literal => [$($to:literal),+]) => {
-            assert_eq!(
-                $from
-                    .split_non_escaped('\\', &$split)
-                    .expect("delim and escape are not the same")
-                    .collect::<Vec<_>>(),
+    ($split:expr; $from:literal => [$($to:literal),+]) => {
+        assert_eq!(
+            non_escaped_sanitize($from, '\\', &$split)
+                .expect("delim and escape are not the same")
+                .collect::<Vec<_>>(),
                 vec![$($to),+]
-            )
-        };
-        ($from:literal => [$($to:literal),+]) => {
-            assert_eq!(
-                $from
-                    .split_non_escaped('\\', &[':'])
-                    .expect("delim and escape are not the same")
-                    .collect::<Vec<_>>(),
-                vec![$($to),+]
-            )
-        };
-    }
+        )
+    };
+    ($from:literal => [$($to:literal),+]) => {
+        assert_eq!(
+            non_escaped_sanitize($from, '\\', &[':'])
+            .expect("delim and escape are not the same")
+            .collect::<Vec<_>>(),
+            vec![$($to),+]
+        )
+    };
+}
 
     #[test]
     fn empty() {
-        non_escaped("", '\\', &[':']).expect("delim and escape are not the same");
+        non_escaped_sanitize("", '\\', &[':']).expect("delim and escape are not the same");
     }
 
     #[test]
     fn delim_is_escape() {
-        non_escaped("", '\\', &['\\']).expect_err("delim and escape are the same");
+        non_escaped_sanitize("", '\\', &['\\']).expect_err("delim and escape are the same");
     }
 
     #[test]
@@ -213,7 +217,7 @@ mod tests {
     fn copy_on_sanitize() {
         // only copy when sanitizing an escape
         let res = r"a\:aa:bbb:cc\.c:ddd"
-            .split_non_escaped('\\', &[':'])
+            .split_non_escaped_sanitize('\\', &[':'])
             .expect("delim and escape are not the same")
             .collect::<Vec<_>>();
 
@@ -253,7 +257,10 @@ mod tests {
         fn ignored_escape_offset() {
             // multiple subsequent to-be-ignored escape sequences were not properly being split
             // and resulted in more parts than expected as well as missing chars
-            test_impl!(['/']; r".*s(\d\d)e(\d\d[a-d])/S$1E$2" => [r".*s(\d\d)e(\d\d[a-d])", "S$1E$2"]);
+            test_impl!(['/']; r".*s(\d\d)e(\d\d[a-d])/S$1E$2" => [
+                r".*s(\d\d)e(\d\d[a-d])",
+                "S$1E$2"
+            ]);
         }
     }
 }
