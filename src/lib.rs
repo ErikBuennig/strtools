@@ -27,12 +27,10 @@
 //! # }
 //! ```
 #![feature(cow_is_borrowed, let_chains)]
-#![deny(missing_docs, clippy::missing_panics_doc)]
+#![warn(missing_docs, clippy::missing_panics_doc)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
-use escape::SplitNonEscaped;
-
-/// Contains functions and types related to escaping strings.
-pub mod escape;
+pub mod split;
 
 mod sealed {
     pub trait Sealed {}
@@ -75,7 +73,7 @@ pub trait StrTools: sealed::Sealed {
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<SplitNonEscaped<'_, 'd>, escape::EscapeIsDelimiterError>;
+    ) -> Result<split::SplitNonEscaped<'_, 'd>, split::EscapeIsDelimiterError>;
 }
 
 impl StrTools for str {
@@ -83,7 +81,7 @@ impl StrTools for str {
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<SplitNonEscaped<'_, 'd>, escape::EscapeIsDelimiterError> {
-        SplitNonEscaped::new(self, esc, delims)
+    ) -> Result<split::SplitNonEscaped<'_, 'd>, split::EscapeIsDelimiterError> {
+        split::non_escaped(self, esc, delims)
     }
 }

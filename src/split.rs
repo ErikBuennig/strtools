@@ -1,6 +1,6 @@
 use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 
-/// An error type that indicates that a delimiter and an escape char cannot be the same.
+/// An error type that indicates that a delimiter and an escape char were the same
 #[derive(Debug)]
 pub struct EscapeIsDelimiterError(());
 
@@ -12,13 +12,56 @@ impl std::fmt::Display for EscapeIsDelimiterError {
 
 impl std::error::Error for EscapeIsDelimiterError {}
 
-// TODO: after a bit of cleanup this should be doable with less state and double ended
+/// Returns an [Iterator] over slices of a [str] separated by unescaped chars from `delims`.
+///
+/// # Examples
+/// ```
+/// use strtools::split;
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
+/// // split a string by some separator but ignore escaped ones
+/// let parts: Vec<_> = split::non_escaped(
+///     r"this string\ is split by\ spaces unless they are\ escaped",
+///     '\\',
+///     &[' ']
+/// )?.collect();
+///
+/// assert_eq!(
+///     parts,
+///     [
+///         "this",
+///         "string is",
+///         "split",
+///         "by spaces",
+///         "unless",
+///         "they",
+///         "are escaped"
+///     ]
+/// );
+/// # Ok(())
+/// # }
+/// ```
+pub fn non_escaped<'s, 'd>(
+    input: &'s str,
+    esc: char,
+    delims: &'d [char],
+) -> Result<SplitNonEscaped<'s, 'd>, EscapeIsDelimiterError> {
+    if !delims.contains(&esc) {
+        Ok(SplitNonEscaped {
+            input,
+            done: 0,
+            esc,
+            delims,
+            iter: input.char_indices().peekable(),
+            curr: Some(Cow::Borrowed("")),
+        })
+    } else {
+        Err(EscapeIsDelimiterError(()))
+    }
+}
 
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter.
-/// This struct is created by the [`StrTools::split_non_escaped`][self_on_StrTools] method, See
-/// it's documentation for more info.
-///
-/// [self_on_StrTools]: crate::StrTools::split_non_escaped
+/// This struct is created by the [`non_escaped`] method, See it's documentation for more info.
 #[derive(Debug)]
 pub struct SplitNonEscaped<'s, 'd> {
     input: &'s str,
@@ -27,27 +70,6 @@ pub struct SplitNonEscaped<'s, 'd> {
     delims: &'d [char],
     iter: Peekable<CharIndices<'s>>,
     curr: Option<Cow<'s, str>>,
-}
-
-impl<'s, 'd> SplitNonEscaped<'s, 'd> {
-    pub(crate) fn new(
-        input: &'s str,
-        esc: char,
-        delims: &'d [char],
-    ) -> Result<Self, EscapeIsDelimiterError> {
-        if !delims.contains(&esc) {
-            Ok(Self {
-                input,
-                done: 0,
-                esc,
-                delims,
-                iter: input.char_indices().peekable(),
-                curr: Some(Cow::Borrowed("")),
-            })
-        } else {
-            Err(EscapeIsDelimiterError(()))
-        }
-    }
 }
 
 impl<'s, 'd> Iterator for SplitNonEscaped<'s, 'd> {
@@ -140,12 +162,12 @@ mod tests {
 
     #[test]
     fn empty() {
-        SplitNonEscaped::new("", '\\', &[':']).expect("delim and escape are not the same");
+        non_escaped("", '\\', &[':']).expect("delim and escape are not the same");
     }
 
     #[test]
     fn delim_is_escape() {
-        SplitNonEscaped::new("", '\\', &['\\']).expect_err("delim and escape are the same");
+        non_escaped("", '\\', &['\\']).expect_err("delim and escape are the same");
     }
 
     #[test]
@@ -189,7 +211,7 @@ mod tests {
 
     #[test]
     fn copy_on_sanitize() {
-        // only copy when sanitizing a escape
+        // only copy when sanitizing an escape
         let res = r"a\:aa:bbb:cc\.c:ddd"
             .split_non_escaped('\\', &[':'])
             .expect("delim and escape are not the same")
