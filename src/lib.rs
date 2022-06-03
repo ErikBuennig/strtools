@@ -71,7 +71,7 @@ pub trait StrTools: sealed::Sealed {
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<split::SplitNonEscapedSanitize<'_, 'd>, split::EscapeIsDelimiterError>;
+    ) -> Result<split::NonEscapedSanitize<'_, 'd>, split::NonEscapedError>;
 }
 
 impl StrTools for str {
@@ -79,7 +79,7 @@ impl StrTools for str {
         &self,
         esc: char,
         delims: &'d [char],
-    ) -> Result<split::SplitNonEscapedSanitize<'_, 'd>, split::EscapeIsDelimiterError> {
+    ) -> Result<split::NonEscapedSanitize<'_, 'd>, split::NonEscapedError> {
         split::non_escaped_sanitize(self, esc, delims)
     }
 }
