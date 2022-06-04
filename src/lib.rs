@@ -41,8 +41,17 @@
 //! # Ok(())
 //! # }
 //! ```
+// keep the nightly features set small in hopes that all used features are stabilized by the time
+// this crate will stablize
 #![feature(cow_is_borrowed, let_chains)]
-#![warn(missing_docs, clippy::missing_panics_doc)]
+// check for missing documentation
+#![warn(
+    missing_docs,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::missing_safety_doc
+)]
+// reduce unsafe scopes to thier minimum
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod split;
