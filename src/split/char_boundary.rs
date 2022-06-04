@@ -1,10 +1,8 @@
 use core::{slice, str};
 
-/// An [Error][0] for `char_boundary_*` functions, see [module level documentation][1] for more
-/// info.
+/// An [Error][0] for `char_boundary_*` functions, see thier documentation for more info.
 ///
 /// [0]: std::error::Error
-/// [1]: self
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum CharBoundaryError {
     /// Indicates that a given input was empty.
@@ -37,7 +35,7 @@ pub enum CharBoundaryError {
 /// use strtools::split;
 /// let input = "aöböc";
 ///
-/// // SAFETY: we know that ö is 2 bytes
+/// // we know that ö is 2 bytes, so we can only split at 0, 1, 3, 4 and 6
 /// let (before, char_at_idx, after) = split::char_boundary(input, 3)?;
 /// assert_eq!("aö", before);
 /// assert_eq!('b', char_at_idx);
@@ -45,16 +43,14 @@ pub enum CharBoundaryError {
 /// # Ok(())
 /// # }
 /// ```
-/// This will panic:
-/// ```should_panic
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use strtools::split;
+/// This will return an error:
+/// ```
+/// # use strtools::split::{self, CharBoundaryError};
 /// # let input = "aöböc";
 /// #
-/// // that's not a sequence boundary, this will panic
-/// let _ = split::char_boundary(input, 2)?;
-/// # Ok(())
-/// # }
+/// // that's not a sequence boundary
+/// let result = split::char_boundary(input, 2);
+/// assert_eq!(result, Err(CharBoundaryError::NotUTF8Boundary(2)));
 /// ```
 pub fn char_boundary(input: &str, index: usize) -> Result<(&str, char, &str), CharBoundaryError> {
     if input.is_empty() {
@@ -88,7 +84,7 @@ pub fn char_boundary(input: &str, index: usize) -> Result<(&str, char, &str), Ch
 /// use strtools::split;
 /// let input = "aöböc";
 ///
-/// // SAFETY: we know that ö is 2 bytes
+/// // we know that ö is 2 bytes, so we can only split at 0, 1, 3, 4 and 6
 /// let (before, char_at_idx, after) = unsafe { split::char_boundary_unchecked(input, 3) };
 /// assert_eq!("aö", before);
 /// assert_eq!('b', char_at_idx);
@@ -98,8 +94,7 @@ pub fn char_boundary(input: &str, index: usize) -> Result<(&str, char, &str), Ch
 /// ```no_run
 /// # use strtools::split;
 /// # let input = "aöböc";
-/// #
-/// // we're not upholding str or char invariants, this causes undefined behavior
+/// // we're not upholding str and char invariants, this causes undefined behavior
 /// let _ = unsafe { split::char_boundary_unchecked(input, 2) };
 /// ```
 pub unsafe fn char_boundary_unchecked(input: &str, index: usize) -> (&str, char, &str) {
@@ -135,7 +130,7 @@ pub unsafe fn char_boundary_unchecked(input: &str, index: usize) -> (&str, char,
 /// use strtools::split;
 /// let mut input = String::from("aöböc");
 ///
-/// // SAFETY: we know that ö is 2 bytes
+/// // we know that ö is 2 bytes, so we can only split at 0, 1, 3, 4 and 6
 /// let (before, char_at_idx, after) = split::char_boundary_mut(&mut input, 3)?;
 /// assert_eq!("aö", before);
 /// assert_eq!('b', char_at_idx);
@@ -143,16 +138,13 @@ pub unsafe fn char_boundary_unchecked(input: &str, index: usize) -> (&str, char,
 /// # Ok(())
 /// # }
 /// ```
-/// This will panic:
-/// ```should_panic
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use strtools::split;
-/// let mut input = String::from("aöböc");
-/// #
-/// // that's not a sequence boundary, this will panic
-/// let _ = split::char_boundary_mut(&mut input, 2)?;
-/// # Ok(())
-/// # }
+/// This will return an error:
+/// ```
+/// # use strtools::split::{self, CharBoundaryError};
+/// # let mut input = String::from("aöböc");
+/// // that's not a sequence boundary
+/// let result = split::char_boundary_mut(&mut input, 2);
+/// assert_eq!(result, Err(CharBoundaryError::NotUTF8Boundary(2)));
 /// ```
 pub fn char_boundary_mut(
     input: &mut str,
@@ -189,7 +181,7 @@ pub fn char_boundary_mut(
 /// use strtools::split;
 /// let mut input = String::from("aöböc");
 ///
-/// // SAFETY: we know that ö is 2 bytes
+/// // we know that ö is 2 bytes, so we can only split at 0, 1, 3, 4 and 6
 /// let (before, char_at_idx, after) = unsafe { split::char_boundary_mut_unchecked(&mut input, 3) };
 /// assert_eq!("aö", before);
 /// assert_eq!('b', char_at_idx);
@@ -198,9 +190,8 @@ pub fn char_boundary_mut(
 /// Undefined behavior:
 /// ```no_run
 /// # use strtools::split;
-/// let mut input = String::from("aöböc");
-/// #
-/// // we're not upholding str or char invariants, this causes undefined behavior
+/// # let mut input = String::from("aöböc");
+/// // we're not upholding str and  char invariants, this causes undefined behavior
 /// let _ = unsafe { split::char_boundary_mut_unchecked(&mut input, 2) };
 /// ```
 pub unsafe fn char_boundary_mut_unchecked(
