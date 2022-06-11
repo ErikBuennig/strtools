@@ -1,10 +1,8 @@
 use super::NonEscapedError;
 use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 
-// NOTE: not sure if this is actually O(n) if the copying of the sub strs is considered as well
-
-/// Splits a [str] by the given delimiter unless it is preceeded by a given escape. Escapes before
-/// significant chars are removed, significant chars are the delimters and the escape itself.
+/// Splits a [str] by the given delimiter unless it is preceded by a given escape. Escapes before
+/// significant chars are removed, significant chars are the delimiters and the escape itself.
 /// Trailing escapes are ignored as if followed by a non-significant char. See [`non_escaped`][0]
 /// for an allocation free version of this function.
 ///
@@ -33,7 +31,7 @@ use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 ///     ' '
 /// )?.collect();
 ///
-/// // the splits are sanitized, the excapes are removed
+/// // the splits are sanitized, the escapes are removed
 /// assert_eq!(
 ///     parts,
 ///     [
@@ -73,7 +71,7 @@ pub fn non_escaped_sanitize(
 //       counterpart
 
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
-/// created by the [`non_escaped_sanitize`] method, See it's documentation for more info.
+/// created by the [`non_escaped_sanitize`] method, see it's documentation for more info.
 #[derive(Debug)]
 pub struct NonEscapedSanitize<'s> {
     input: &'s str,

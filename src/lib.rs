@@ -42,7 +42,7 @@
 //! # }
 //! ```
 // keep the nightly features set small in hopes that all used features are stabilized by the time
-// this crate will stablize
+// this crate will stabilize
 #![feature(cow_is_borrowed, let_chains)]
 // check for missing documentation
 #![warn(
@@ -65,8 +65,8 @@ mod sealed {
 /// See the individual function documentation for more info. **The methods on this trait are subject
 /// to change during the development of the crates core functionality.**
 pub trait StrTools: sealed::Sealed {
-    /// Splits a [str] by the given delimiters unless they are precided by an escape.
-    /// Escapes before significant chars are removed, significant chars are the delimters and the
+    /// Splits a [str] by the given delimiters unless they are preceded by an escape.
+    /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
     ///
     /// # Errors
@@ -100,8 +100,8 @@ pub trait StrTools: sealed::Sealed {
         delim: char,
     ) -> Result<split::NonEscapedSanitize<'_>, split::NonEscapedError>;
 
-    /// Splits a [str] by the given delimiters unless they are precided by an escape.
-    /// Escapes before significant chars are removed, significant chars are the delimters and the
+    /// Splits a [str] by the given delimiters unless they are preceded by an escape.
+    /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
     ///
     /// # Errors

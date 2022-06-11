@@ -2,7 +2,7 @@ use super::NonEscapedError;
 use crate::split;
 use std::iter::FusedIterator;
 
-/// Splits a [str] by the given delimiter unless it is preceeded by a given escape. This is a
+/// Splits a [str] by the given delimiter unless it is preceded by a given escape. This is a
 /// sanitization free version of [`non_escaped_sanitize`][0].
 ///
 /// # Errors
@@ -58,7 +58,7 @@ pub fn non_escaped(input: &str, esc: char, delim: char) -> Result<NonEscaped<'_>
 }
 
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
-/// created by the [`non_escaped`] method, See it's documentation for more info.
+/// created by the [`non_escaped`] method, see it's documentation for more info.
 #[derive(Debug)]
 pub struct NonEscaped<'s> {
     rest: Option<&'s str>,

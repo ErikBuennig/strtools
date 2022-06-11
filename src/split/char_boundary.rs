@@ -1,6 +1,6 @@
 use core::{slice, str};
 
-/// An [Error][0] for `char_boundary_*` functions, see thier documentation for more info.
+/// An [Error][0] for `char_boundary_*` functions, see their documentation for more info.
 ///
 /// [0]: std::error::Error
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -9,7 +9,7 @@ pub enum CharBoundaryError {
     #[error("the input must contain at least one char, but was empty")]
     InputEmpty,
 
-    /// Indicates that the given index was out of range of a givne length.
+    /// Indicates that the given index was out of range of a given length.
     #[error("the index is {0}, but the length is {1}")]
     IndexOutOfRange(usize, usize),
 
@@ -18,10 +18,7 @@ pub enum CharBoundaryError {
     NotUTF8Boundary(usize),
 }
 
-/// Splits `input` into a triple of before, the char at `index` and after like so:
-/// ```text
-/// [before @ .., char, after @ ..]
-/// ```
+/// Splits `input` into a triple of before, the char at `index` and after.
 ///
 /// # Errors
 /// Returns an error if:
@@ -68,10 +65,7 @@ pub fn char_boundary(input: &str, index: usize) -> Result<(&str, char, &str), Ch
     }
 }
 
-/// Splits `input` into a triple of before, the char at `index` and after like so:
-/// ```text
-/// [before @ .., char, after @ ..]
-/// ```
+/// Splits `input` into a triple of before, the char at `index` and after.
 ///
 /// # Safety
 /// The caller must ensure that:
@@ -98,7 +92,7 @@ pub fn char_boundary(input: &str, index: usize) -> Result<(&str, char, &str), Ch
 /// let _ = unsafe { split::char_boundary_unchecked(input, 2) };
 /// ```
 pub unsafe fn char_boundary_unchecked(input: &str, index: usize) -> (&str, char, &str) {
-    // SAFETY: teh caller must ensure boundary conditions
+    // SAFETY: the caller must ensure boundary conditions
     unsafe {
         let char_at = input
             .get_unchecked(index..)
@@ -113,10 +107,7 @@ pub unsafe fn char_boundary_unchecked(input: &str, index: usize) -> (&str, char,
     }
 }
 
-/// Splits `input` mutably into a triple of before, the char at `index` and after like so:
-/// ```text
-/// [before @ .., char, after @ ..]
-/// ```
+/// Splits `input` mutably into a triple of before, the char at `index` and after.
 ///
 /// # Errors
 /// Returns an error if:
@@ -165,10 +156,7 @@ pub fn char_boundary_mut(
     }
 }
 
-/// Splits `input` mutably  into a triple of before, the char at `index` and after like so:
-/// ```text
-/// [before @ .., char, after @ ..]
-/// ```
+/// Splits `input` mutably into a triple of before, the char at `index` and after.
 ///
 /// # Safety
 /// The caller must ensure that:

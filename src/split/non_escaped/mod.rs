@@ -4,7 +4,7 @@ pub use sanitized::*;
 mod unsanitized;
 pub use unsanitized::*;
 
-/// An [Error][0] for `non_escaped*` functions, see their documentaiton for more info.
+/// An [Error][0] for `non_escaped*` functions, see their documentation for more info.
 ///
 /// [0]: std::error::Error
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
