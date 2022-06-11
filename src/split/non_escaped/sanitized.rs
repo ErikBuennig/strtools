@@ -11,7 +11,8 @@ use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 /// - `esc == delim`
 ///
 /// # Complexity
-/// This algorithm requires `O(n)` time where `n` is the length of the input string.
+/// This algorithm requires `O(n)` time where `n` is the length of the input string, ignoring the
+/// memmoves of sanitizing strings.
 ///
 /// # Allocation
 /// If no escapes are encountered in a part, no allocations are done and the part is borrowed,

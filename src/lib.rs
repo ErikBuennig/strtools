@@ -54,6 +54,7 @@
 // reduce unsafe scopes to thier minimum
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod find;
 pub mod split;
 
 mod sealed {
