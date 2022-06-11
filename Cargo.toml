@@ -1,12 +1,12 @@
 [package]
 name = "strtools"
-authors = ["Erik Bünnig <business.erik.buennig@protonmail.com>"]
+authors = ["Erik Bünnig <inquiries@epbuennig.me>"]
 description = "A library containing various string utilities"
 keywords = ["str", "string", "escaping"]
 categories = ["algorithms", "parsing", "text-processing"]
 
 repository = "https://github.com/ErikBuennig/strtools/"
-license-file = "LICENSE"
+license = "MIT"
 readme = "README.md"
 
 version = "0.2.0"
