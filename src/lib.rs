@@ -43,7 +43,7 @@
 //! ```
 // keep the nightly features set small in hopes that all used features are stabilized by the time
 // this crate will stabilize
-#![feature(cow_is_borrowed, let_chains)]
+#![feature(cow_is_borrowed, is_sorted, let_chains)]
 // check for missing documentation
 #![warn(
     missing_docs,
@@ -56,6 +56,8 @@
 
 pub mod find;
 pub mod split;
+pub mod escape;
+pub mod util;
 
 mod sealed {
     pub trait Sealed {}
