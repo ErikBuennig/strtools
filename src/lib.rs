@@ -51,12 +51,15 @@
     clippy::missing_errors_doc,
     clippy::missing_safety_doc
 )]
-// reduce unsafe scopes to thier minimum
+// reduce unsafe scopes to their minimum
 #![deny(unsafe_op_in_unsafe_fn)]
 
-pub mod find;
-pub mod split;
+use parse::{FromStrBack, FromStrFront};
+
 pub mod escape;
+pub mod find;
+pub mod parse;
+pub mod split;
 pub mod util;
 
 mod sealed {
@@ -135,6 +138,40 @@ pub trait StrTools: sealed::Sealed {
         esc: char,
         delim: char,
     ) -> Result<split::NonEscaped<'_>, split::NonEscapedError>;
+
+    /// Attempts to parse T` from the beginning of the [str], returns the rest of the `input` and
+    /// `T` if parsing succeeded.
+    ///
+    /// # Error
+    /// Returns an error if:
+    /// - the start of `input` contain any valid representation of [Self]
+    /// - `input` did not contain a complete representation of [Self]
+    ///
+    /// # Examples
+    /// ```
+    /// use strtools::StrTools;
+    ///
+    /// let result = "-128 Look mom, no error!".parse_front::<i8>();
+    /// assert_eq!(result, Ok(-128, " Look mom, no error!"));
+    /// ```
+    fn parse_front<T: FromStrFront>(&self) -> Result<(T, &str), T::Error>;
+
+    /// Attempts to parse `T` from the end of the [str], returns the rest of the `input` and T` if
+    /// parsing succeeded.
+    ///
+    /// # Error
+    /// Returns an error if:
+    /// - the start of `input` contain any valid representation of [Self]
+    /// - `input` did not contain a complete representation of [Self]
+    ///
+    /// # Examples
+    /// ```
+    /// use strtools::StrTools;
+    ///
+    /// let result = "Look mom, no error! -128".parse_back::<i8>();
+    /// assert_eq!(result, Ok(-128, "Look mom, no error! "));
+    /// ```
+    fn parse_back<T: FromStrBack>(&self) -> Result<(T, &str), T::Error>;
 }
 
 impl StrTools for str {
@@ -152,5 +189,13 @@ impl StrTools for str {
         delim: char,
     ) -> Result<split::NonEscaped<'_>, split::NonEscapedError> {
         split::non_escaped(self, esc, delim)
+    }
+
+    fn parse_front<T: FromStrFront>(&self) -> Result<(T, &str), T::Error> {
+        T::from_str_front(self)
+    }
+
+    fn parse_back<T: FromStrBack>(&self) -> Result<(T, &str), T::Error> {
+        T::from_str_back(self)
     }
 }
