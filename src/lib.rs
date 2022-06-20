@@ -68,15 +68,10 @@ pub mod parse;
 pub mod split;
 pub mod util;
 
-mod sealed {
-    pub trait Sealed {}
-    impl Sealed for str {}
-}
-
 /// The main trait of this crate, providing various extension methods for [`str`].
 /// See the individual function documentation for more info. **The methods on this trait are subject
 /// to change during the development of the crates core functionality.**
-pub trait StrTools: sealed::Sealed {
+pub trait StrTools: util::sealed::Sealed {
     /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
