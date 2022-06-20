@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Deref};
 
-/// An [Error][e] indicating that a `[T]` could not be turned into a [`Sorted<T>`] because it was
+/// An [Error][e] indicating that a `[T]` could not be turned into a [`Sorted`] because it was
 /// not sorted according to the `REVERSE` const parameter.
 ///
 /// [e]: std::error::Error
@@ -11,8 +11,8 @@ pub enum SortedSliceError {
     SliceNotSorted,
 }
 
-/// Represents a `[T]` that is guaranteed to be sorted by `T: PartialOrd`. This is a [DST][dst],
-/// therefore constructors only return references.
+/// Represents a `[T]` that is guaranteed to be sorted by [`T: PartialOrd`][pord]. This is a
+/// [DST][dst], therefore constructors only return references.
 ///
 /// # Examples
 /// ```
@@ -29,12 +29,13 @@ pub enum SortedSliceError {
 /// ```
 ///
 /// [dst]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
+/// [pord]: PartialOrd
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Sorted<T: PartialOrd>([T]);
 
 impl<T: PartialOrd> Sorted<T> {
-    /// Creates a new [Sorted] from the given `slice` if it was sorted.
+    /// Creates a new [`Sorted`] from the given `slice` if it was sorted.
     ///
     /// # Errors
     /// Returns an error if:
@@ -67,7 +68,7 @@ impl<T: PartialOrd> Sorted<T> {
         }
     }
 
-    /// Sorts the given slice and creates a new mutable [Sorted<T>] from it.
+    /// Sorts the given slice and creates a new mutable [`Sorted`] from it.
     ///
     /// # Examples
     /// ```
@@ -87,7 +88,7 @@ impl<T: PartialOrd> Sorted<T> {
         unsafe { Self::new_unchecked(slice) }
     }
 
-    /// Creates a new [Sorted] from the given `slice`, assuming it was sorted.
+    /// Creates a new [`Sorted`] from the given `slice`, assuming it was sorted.
     ///
     /// # Safety
     /// The caller must ensure that:
@@ -113,7 +114,7 @@ impl<T: PartialOrd> Sorted<T> {
         unsafe { std::mem::transmute(slice) }
     }
 
-    /// Creates a new mutable [Sorted] from the given `slice` if it was sorted.
+    /// Creates a new mutable [`Sorted`] from the given `slice` if it was sorted.
     ///
     /// # Safety
     /// The caller must ensure that:
@@ -150,7 +151,11 @@ impl<T: PartialOrd> Sorted<T> {
         }
     }
 
-    /// Sorts the given slice and creates a new mutable [Sorted<T>] from it.
+    /// Sorts the given slice and creates a new mutable [`Sorted`] from it.
+    ///
+    /// # Safety
+    /// The caller must ensure that:
+    /// - `slice` remains sorted according to `T: PartialOrd` if mutated
     ///
     /// # Examples
     /// ```
@@ -173,7 +178,7 @@ impl<T: PartialOrd> Sorted<T> {
     // TODO: make const once `const_mut_refs` stabilizes
     //       see https://github.com/rust-lang/rust/issues/57349
 
-    /// Creates a new [Sorted] from the given `slice`, assuming it was sorted.
+    /// Creates a new [`Sorted`] from the given `slice`, assuming it was sorted.
     ///
     /// # Safety
     /// The caller must ensure that:

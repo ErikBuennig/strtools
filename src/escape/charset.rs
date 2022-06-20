@@ -5,8 +5,8 @@ use std::borrow::Cow;
 /// must be a reference to a [`Sorted`] slice of chars.
 ///
 /// # Complexity
-/// This algorithm requires `O(n log m)` time where `n` is the length of the input string and `m` is
-/// the length of the charset.
+/// This algorithm requires `O(n * log m)` time where `n` is the length of the input string and `m`
+/// is the length of the charset.
 ///
 /// # Allocation
 /// No allocations are done.

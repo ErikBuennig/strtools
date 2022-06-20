@@ -1,4 +1,4 @@
-//! This crate provides the [StrTools] trait which exposes a variety of helper functions for
+//! This crate provides the [`StrTools`] trait which exposes a variety of helper functions for
 //! handling strings for use cases like handling user input.
 //!
 //! # Examples
@@ -73,11 +73,11 @@ mod sealed {
     impl Sealed for str {}
 }
 
-/// The main trait of this crate, providing various extension methods for [str].
+/// The main trait of this crate, providing various extension methods for [`str`].
 /// See the individual function documentation for more info. **The methods on this trait are subject
 /// to change during the development of the crates core functionality.**
 pub trait StrTools: sealed::Sealed {
-    /// Splits a [str] by the given delimiters unless they are preceded by an escape.
+    /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
     ///
@@ -86,11 +86,12 @@ pub trait StrTools: sealed::Sealed {
     /// - `esc == delim`
     ///
     /// # Complexity
-    /// This algorithm requires `O(n)` time where `n` is the length of the input string.
+    /// This algorithm requires `O(n * max(log m, 1))` time where `n` is the length of the input
+    /// string and `m` is the length of the delimiters.
     ///
     /// # Allocation
     /// If no escapes are encountered in a part, no allocations are done and the part is borrowed,
-    /// otherwise a [String] and all but the escape chars before delimiters are copied over.
+    /// otherwise a [`String`] and all but the escape chars before delimiters are copied over.
     ///
     /// # Examples
     /// ```
@@ -112,7 +113,7 @@ pub trait StrTools: sealed::Sealed {
         delim: char,
     ) -> Result<split::NonEscapedSanitize<'_>, split::NonEscapedError>;
 
-    /// Splits a [str] by the given delimiters unless they are preceded by an escape.
+    /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
     ///
@@ -121,7 +122,8 @@ pub trait StrTools: sealed::Sealed {
     /// - `esc == delim`
     ///
     /// # Complexity
-    /// This algorithm requires `O(n)` time where `n` is the length of the input string.
+    /// This algorithm requires `O(n * max(log m, 1))` time where `n` is the length of the input
+    /// string and `m` is the length of the delimiters.
     ///
     /// # Allocation
     /// No allocations are done.
@@ -145,37 +147,37 @@ pub trait StrTools: sealed::Sealed {
         delim: char,
     ) -> Result<split::NonEscaped<'_>, split::NonEscapedError>;
 
-    /// Attempts to parse T` from the beginning of the [str], returns the rest of the `input` and
+    /// Attempts to parse `T` from the beginning of the [`str`], returns the rest of the `input` and
     /// `T` if parsing succeeded.
     ///
-    /// # Error
+    /// # Errors
     /// Returns an error if:
-    /// - the start of `input` contain any valid representation of [Self]
-    /// - `input` did not contain a complete representation of [Self]
+    /// - the start of `input` contain any valid representation of `Self`
+    /// - `input` did not contain a complete representation of `Self`
     ///
     /// # Examples
     /// ```
     /// use strtools::StrTools;
     ///
     /// let result = "-128 Look mom, no error!".parse_front::<i8>();
-    /// assert_eq!(result, Ok(-128, " Look mom, no error!"));
+    /// assert_eq!(result, Ok((-128, " Look mom, no error!")));
     /// ```
     fn parse_front<T: FromStrFront>(&self) -> Result<(T, &str), T::Error>;
 
-    /// Attempts to parse `T` from the end of the [str], returns the rest of the `input` and T` if
+    /// Attempts to parse `T` from the end of the [`str`], returns the rest of the `input` and T` if
     /// parsing succeeded.
     ///
-    /// # Error
+    /// # Errors
     /// Returns an error if:
-    /// - the start of `input` contain any valid representation of [Self]
-    /// - `input` did not contain a complete representation of [Self]
+    /// - the start of `input` contain any valid representation of `Self`
+    /// - `input` did not contain a complete representation of `Self`
     ///
     /// # Examples
     /// ```
     /// use strtools::StrTools;
     ///
     /// let result = "Look mom, no error! -128".parse_back::<i8>();
-    /// assert_eq!(result, Ok(-128, "Look mom, no error! "));
+    /// assert_eq!(result, Ok((-128, "Look mom, no error! ")));
     /// ```
     fn parse_back<T: FromStrBack>(&self) -> Result<(T, &str), T::Error>;
 }

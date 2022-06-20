@@ -4,7 +4,7 @@ use crate::{
 };
 use std::fmt::Debug;
 
-/// An [`Error`][0] for [`FromStrPartialRadixExt`] implementations of signed integers.
+/// An [`Error`][0] for [`FromStrFront`]/[`FromStrBack`] implementations of integers.
 ///
 /// [0]: std::error::Error
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -26,14 +26,16 @@ pub enum ParseIntPartialError {
 
 /// An extension for all integers that adds `from_str_radix` equivalents of the [`FromStrFront`] &
 /// [`FromStrBack`] functions, see it's documentation for more info.
-pub trait FromStrPartialRadixExt: util::private::Sealed + FromStrFront + FromStrBack {
+pub trait FromStrPartialRadixExt: util::sealed::Sealed + FromStrFront + FromStrBack {
     /// Behaves like [`FromStrFront::from_str_front`] for the given radix.
+    #[allow(clippy::missing_errors_doc)]
     fn from_str_radix_front(
         input: &str,
         radix: u32,
     ) -> Result<(Self, &str), <Self as FromStrFront>::Error>;
 
     /// Behaves like [`FromStrBack::from_str_back`] for the given radix.
+    #[allow(clippy::missing_errors_doc)]
     fn from_str_radix_back(
         input: &str,
         radix: u32,

@@ -21,9 +21,9 @@ use std::{num::NonZeroUsize, ops::Range};
 /// This algorithm requires `O(n)` time, ignoring memmoves when draining the indexmap.
 ///
 /// # Allocation
-/// An [IndexMap] is allocated to keep track of unique chars, the map should take up at most `n`
+/// An [`IndexMap`] is allocated to keep track of unique chars, the map should take up at most `n`
 /// amount of space where `n` is the next allocation size that can fit all chars of the input.
-/// An IndexMap is used as opposed to a [HashMap][hm] because it preserves ordering by value which
+/// An IndexMap is used as opposed to a [`HashMap`][hm] because it preserves ordering by value which
 /// allows for draining without iterating all elements using [`HashMap::retain`][hmr].
 ///
 /// [hm]: std::collections::HashMap
