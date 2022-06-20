@@ -17,11 +17,17 @@ pub enum ParseIntPartialError {
     #[error("the given integer representation would cause underflow")]
     Underflow,
 
-    /// The input was either empty or had a prefix or sign followed by invalid input.
+    /// The input contained invalid tokens.
     #[error(
         "invalid input, expected: `['+' | '-']? ['0' - '9']+` for signed or `['0' - '9']+` for unsigned"
     )]
-    Insufficient,
+    Invalid,
+
+    /// The input was empty.
+    #[error(
+        "empty input, expected: `['+' | '-']? ['0' - '9']+` for signed or `['0' - '9']+` for unsigned"
+    )]
+    Empty,
 }
 
 /// An extension for all integers that adds `from_str_radix` equivalents of the [`FromStrFront`] &
@@ -47,12 +53,6 @@ pub trait FromStrPartialRadixExt: util::sealed::Sealed + FromStrFront + FromStrB
 // then.
 
 trait FromStrRadixHelper: Copy {
-    type Error;
-
-    const ERROR_INSUFFICIENT: Self::Error;
-    const ERROR_OVERFLOW: Self::Error;
-    const ERROR_UNDERFLOW: Self::Error;
-
     const IS_SIGNED: bool;
     const ZERO: Self;
 
@@ -65,7 +65,7 @@ trait FromStrRadixHelper: Copy {
 fn from_str_radix_front<T: FromStrRadixHelper>(
     input: &str,
     radix: u32,
-) -> Result<(T, &str), T::Error> {
+) -> Result<(T, &str), ParseIntPartialError> {
     assert!(
         matches!(radix, 2..=36),
         "radix must be in `[2, 36]` - found {}",
@@ -77,7 +77,7 @@ fn from_str_radix_front<T: FromStrRadixHelper>(
             if T::IS_SIGNED {
                 (true, &input[1..])
             } else {
-                return Err(T::ERROR_INSUFFICIENT);
+                return Err(ParseIntPartialError::Invalid);
             }
         }
         [b'+', ..] => (false, &input[1..]),
@@ -85,7 +85,7 @@ fn from_str_radix_front<T: FromStrRadixHelper>(
     };
 
     if rest.is_empty() {
-        return Err(T::ERROR_INSUFFICIENT);
+        return Err(ParseIntPartialError::Empty);
     }
 
     let iter = rest
@@ -111,8 +111,12 @@ fn from_str_radix_front<T: FromStrRadixHelper>(
             };
 
             num = true;
-            buf = buf.checked_mul(radix).ok_or(T::ERROR_UNDERFLOW)?;
-            buf = buf.checked_sub(sub).ok_or(T::ERROR_UNDERFLOW)?;
+            buf = buf
+                .checked_mul(radix)
+                .ok_or(ParseIntPartialError::Underflow)?;
+            buf = buf
+                .checked_sub(sub)
+                .ok_or(ParseIntPartialError::Underflow)?;
         }
     } else {
         for (idx, maybe_digit) in iter {
@@ -128,22 +132,24 @@ fn from_str_radix_front<T: FromStrRadixHelper>(
             };
 
             num = true;
-            buf = buf.checked_mul(radix).ok_or(T::ERROR_OVERFLOW)?;
-            buf = buf.checked_add(add).ok_or(T::ERROR_OVERFLOW)?;
+            buf = buf
+                .checked_mul(radix)
+                .ok_or(ParseIntPartialError::Overflow)?;
+            buf = buf.checked_add(add).ok_or(ParseIntPartialError::Overflow)?;
         }
     }
 
     if num {
         Ok((buf, &rest[rest_start..]))
     } else {
-        Err(T::ERROR_INSUFFICIENT)
+        Err(ParseIntPartialError::Invalid)
     }
 }
 
 fn from_str_radix_back<T: FromStrRadixHelper>(
     input: &str,
     radix: u32,
-) -> Result<(T, &str), T::Error> {
+) -> Result<(T, &str), ParseIntPartialError> {
     assert!(
         matches!(radix, 2..=36),
         "radix must be in `[2, 36]` - found {}",
@@ -151,7 +157,7 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
     );
 
     if input.is_empty() {
-        return Err(T::ERROR_INSUFFICIENT);
+        return Err(ParseIntPartialError::Empty);
     }
 
     let mut num = false;
@@ -182,11 +188,11 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
             len += 1;
             num = true;
 
-            let fac = factor.ok_or(T::ERROR_UNDERFLOW)?;
+            let fac = factor.ok_or(ParseIntPartialError::Underflow)?;
             buf = fac
                 .checked_mul(sub)
                 .and_then(|s| buf.checked_sub(s))
-                .ok_or(T::ERROR_UNDERFLOW)?;
+                .ok_or(ParseIntPartialError::Underflow)?;
             factor = fac.checked_mul(radix);
         }
 
@@ -194,7 +200,7 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
         // we invert it returning none if it's too large to fit the positive equivalent
         // allows parsing `-128..127` for u8
         if !is_neg {
-            buf = buf.checked_neg().ok_or(T::ERROR_OVERFLOW)?;
+            buf = buf.checked_neg().ok_or(ParseIntPartialError::Overflow)?;
         }
     } else {
         for &byte in iter {
@@ -212,11 +218,11 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
             len += 1;
             num = true;
 
-            let fac = factor.ok_or(T::ERROR_OVERFLOW)?;
+            let fac = factor.ok_or(ParseIntPartialError::Overflow)?;
             buf = fac
                 .checked_mul(add)
                 .and_then(|a| buf.checked_add(a))
-                .ok_or(T::ERROR_OVERFLOW)?;
+                .ok_or(ParseIntPartialError::Overflow)?;
 
             // return error next time
             factor = fac.checked_mul(radix);
@@ -226,7 +232,7 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
     if num {
         Ok((buf, &input[..input.len() - len]))
     } else {
-        Err(T::ERROR_INSUFFICIENT)
+        Err(ParseIntPartialError::Invalid)
     }
 }
 
@@ -235,12 +241,6 @@ fn from_str_radix_back<T: FromStrRadixHelper>(
 macro_rules! int_impl {
     (int $int:ty) => {
         impl FromStrRadixHelper for $int {
-            type Error = ParseIntPartialError;
-
-            const ERROR_INSUFFICIENT: Self::Error = ParseIntPartialError::Insufficient;
-            const ERROR_OVERFLOW: Self::Error = ParseIntPartialError::Overflow;
-            const ERROR_UNDERFLOW: Self::Error = ParseIntPartialError::Underflow;
-
             const IS_SIGNED: bool = true;
             const ZERO: Self = 0;
 
@@ -269,12 +269,6 @@ macro_rules! int_impl {
     };
     (uint $int:ty) => {
         impl FromStrRadixHelper for $int {
-            type Error = ParseIntPartialError;
-
-            const ERROR_INSUFFICIENT: Self::Error = ParseIntPartialError::Insufficient;
-            const ERROR_OVERFLOW: Self::Error = ParseIntPartialError::Overflow;
-            const ERROR_UNDERFLOW: Self::Error = ParseIntPartialError::Overflow;
-
             const IS_SIGNED: bool = false;
             const ZERO: Self = 0;
 
@@ -361,11 +355,11 @@ mod tests {
         fn invalid_prefix() {
             assert_eq!(
                 u8::from_str_radix_front("!!!", 10),
-                Err(ParseIntPartialError::Insufficient)
+                Err(ParseIntPartialError::Invalid)
             );
             assert_eq!(
                 i8::from_str_radix_front("-!!!", 10),
-                Err(ParseIntPartialError::Insufficient)
+                Err(ParseIntPartialError::Invalid)
             );
         }
 
@@ -405,11 +399,11 @@ mod tests {
         fn invalid_suffix() {
             assert_eq!(
                 u8::from_str_radix_back("!!!", 10),
-                Err(ParseIntPartialError::Insufficient)
+                Err(ParseIntPartialError::Invalid)
             );
             assert_eq!(
                 i8::from_str_radix_back("!!!-", 10),
-                Err(ParseIntPartialError::Insufficient)
+                Err(ParseIntPartialError::Invalid)
             );
         }
 
