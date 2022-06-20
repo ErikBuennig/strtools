@@ -1,4 +1,7 @@
-use crate::parse::{FromStrBack, FromStrFront};
+use crate::{
+    parse::{FromStrBack, FromStrFront},
+    util,
+};
 use std::fmt::Debug;
 
 /// An [`Error`][0] for [`FromStrPartialRadixExt`] implementations of signed integers.
@@ -23,7 +26,7 @@ pub enum ParseIntPartialError {
 
 /// An extension for all integers that adds `from_str_radix` equivalents of the [`FromStrFront`] &
 /// [`FromStrBack`] functions, see it's documentation for more info.
-pub trait FromStrPartialRadixExt: FromStrFront + FromStrBack {
+pub trait FromStrPartialRadixExt: util::private::Sealed + FromStrFront + FromStrBack {
     /// Behaves like [`FromStrFront::from_str_front`] for the given radix.
     fn from_str_radix_front(
         input: &str,

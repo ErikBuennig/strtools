@@ -43,7 +43,13 @@
 //! ```
 // keep the nightly features set small in hopes that all used features are stabilized by the time
 // this crate will stabilize
-#![feature(cow_is_borrowed, is_sorted, let_chains)]
+#![feature(
+    associated_type_defaults,
+    cow_is_borrowed,
+    decl_macro,
+    is_sorted,
+    let_chains
+)]
 // check for missing documentation
 #![warn(
     missing_docs,
