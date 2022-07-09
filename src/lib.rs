@@ -65,6 +65,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use parse::{FromStrBack, FromStrFront};
+use util::Sorted;
 
 pub mod escape;
 pub mod find;
@@ -76,6 +77,28 @@ pub mod util;
 /// See the individual function documentation for more info. **The methods on this trait are subject
 /// to change during the development of the crates core functionality.**
 pub trait StrTools: util::sealed::Sealed {
+    /// Behaves similar to [`str::split`] but generic of the the amount of indices.
+    ///
+    /// # Panics
+    /// Panics if the last index is out of bounds:
+    /// `indices.last() > Some(input.len)`
+    ///
+    /// # Examples
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use strtools::StrTools;
+    ///
+    /// let value = "0123456789ab";
+    /// let ([first, second], third) = value.split_n_times(&[4, 8].try_into()?);
+    ///
+    /// assert_eq!(first, "0123");
+    /// assert_eq!(second, "4567");
+    /// assert_eq!(third, "89ab");
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn split_n_times<const N: usize>(&self, indices: &Sorted<usize, N>) -> ([&str; N], &str);
+
     /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
     /// escape itself. Trailing escapes are ignored as if followed by a non-significant char.
@@ -182,6 +205,10 @@ pub trait StrTools: util::sealed::Sealed {
 }
 
 impl StrTools for str {
+    fn split_n_times<const N: usize>(&self, indices: &Sorted<usize, N>) -> ([&str; N], &str) {
+        split::n_times(self, indices)
+    }
+
     fn split_non_escaped_sanitize<'d>(
         &self,
         esc: char,
