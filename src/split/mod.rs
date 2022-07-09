@@ -10,6 +10,9 @@ pub use non_escaped::*;
 
 /// Splits a string into `N + 1` pieces.
 ///
+/// # Panics
+/// Panics if an index is out of bounds, `index <= input.len()`.
+///
 /// # Examples
 /// ```
 /// # use strtools::split;
@@ -36,12 +39,12 @@ pub fn n_times<'s, const N: usize>(
 
     for (idx, &index) in indices.iter().enumerate() {
         // SAFETY: indices checked above
-        res[idx] = unsafe { &input.get_unchecked(prev..index) };
+        res[idx] = unsafe { input.get_unchecked(prev..index) };
         prev = index;
     }
 
     // SAFETY: see above
-    (res, unsafe { &input.get_unchecked(prev..) })
+    (res, unsafe { input.get_unchecked(prev..) })
 }
 
 #[cfg(test)]

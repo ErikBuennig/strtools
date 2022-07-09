@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [0.3.1] - 2020-07-09
+### Fixes
+- removed unused lifetimes
+- used more lifetime ellision
+
+
+---
 ## [0.3.0] - 2020-07-09
 ### Additions
 - `escape::charset`
@@ -44,7 +51,8 @@ Initial Release
 
 
 ---
-[Unreleased]: https://github.com/epbuennig/strtools/compare/v0.3.0...master
+[Unreleased]: https://github.com/epbuennig/strtools/compare/v0.3.1...master
+[0.3.1]: https://github.com/epbuennig/strtools/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/epbuennig/strtools/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/epbuennig/strtools/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/epbuennig/strtools/compare/v0.1.0...v0.1.1

@@ -136,11 +136,11 @@ pub trait StrTools: util::sealed::Sealed {
     /// ```
     ///
     /// [free]: split::non_escaped_sanitize
-    fn split_non_escaped_sanitize<'s, D: Into<Sorted<char, N>>, const N: usize>(
-        &'s self,
+    fn split_non_escaped_sanitize<D: Into<Sorted<char, N>>, const N: usize>(
+        &self,
         esc: char,
         delims: D,
-    ) -> Result<split::NonEscapedSanitize<'s, N>, split::NonEscapedError>;
+    ) -> Result<split::NonEscapedSanitize<'_, N>, split::NonEscapedError>;
 
     /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
@@ -174,11 +174,11 @@ pub trait StrTools: util::sealed::Sealed {
     /// ```
     ///
     /// [free]: split::non_escaped
-    fn split_non_escaped<'s, D: Into<Sorted<char, N>>, const N: usize>(
-        &'s self,
+    fn split_non_escaped<D: Into<Sorted<char, N>>, const N: usize>(
+        &self,
         esc: char,
         delims: D,
-    ) -> Result<split::NonEscaped<'s, N>, split::NonEscapedError>;
+    ) -> Result<split::NonEscaped<'_, N>, split::NonEscapedError>;
 
     /// Attempts to parse `T` from the beginning of the [`str`], returns the rest of the `input` and
     /// `T` if parsing succeeded.
@@ -220,19 +220,19 @@ impl StrTools for str {
         split::n_times(self, indices)
     }
 
-    fn split_non_escaped_sanitize<'s, D: Into<Sorted<char, N>>, const N: usize>(
-        &'s self,
+    fn split_non_escaped_sanitize<D: Into<Sorted<char, N>>, const N: usize>(
+        &self,
         esc: char,
         delims: D,
-    ) -> Result<split::NonEscapedSanitize<'s, N>, split::NonEscapedError> {
+    ) -> Result<split::NonEscapedSanitize<'_, N>, split::NonEscapedError> {
         split::non_escaped_sanitize(self, esc, delims.into())
     }
 
-    fn split_non_escaped<'s, D: Into<Sorted<char, N>>, const N: usize>(
-        &'s self,
+    fn split_non_escaped<D: Into<Sorted<char, N>>, const N: usize>(
+        &self,
         esc: char,
         delims: D,
-    ) -> Result<split::NonEscaped<'s, N>, split::NonEscapedError> {
+    ) -> Result<split::NonEscaped<'_, N>, split::NonEscapedError> {
         split::non_escaped(self, esc, delims.into())
     }
 

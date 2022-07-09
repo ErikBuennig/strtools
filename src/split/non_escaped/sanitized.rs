@@ -50,11 +50,11 @@ use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped_sanitize<'s, 'd, const N: usize>(
-    input: &'s str,
+pub fn non_escaped_sanitize<const N: usize>(
+    input: &str,
     esc: char,
     delims: Sorted<char, N>,
-) -> Result<NonEscapedSanitize<'s, N>, NonEscapedError> {
+) -> Result<NonEscapedSanitize<'_, N>, NonEscapedError> {
     if delims.binary_search(&esc).is_ok() {
         Err(NonEscapedError::EscapeContainsDelimiter(esc))
     } else {

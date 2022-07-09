@@ -45,11 +45,11 @@ use std::iter::FusedIterator;
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped<'input, const DELIMITERS: usize>(
-    input: &'input str,
+pub fn non_escaped<const N: usize>(
+    input: &str,
     esc: char,
-    delims: Sorted<char, DELIMITERS>,
-) -> Result<NonEscaped<'input, DELIMITERS>, NonEscapedError> {
+    delims: Sorted<char, N>,
+) -> Result<NonEscaped<'_, N>, NonEscapedError> {
     if delims.binary_search(&esc).is_ok() {
         Err(NonEscapedError::EscapeContainsDelimiter(esc))
     } else {
@@ -64,10 +64,10 @@ pub fn non_escaped<'input, const DELIMITERS: usize>(
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
 /// created by the [`non_escaped`] method, see it's documentation for more info.
 #[derive(Debug)]
-pub struct NonEscaped<'s, const N: usize> {
-    rest: Option<&'s str>,
+pub struct NonEscaped<'input, const DELIMITERS: usize> {
+    rest: Option<&'input str>,
     esc: char,
-    delims: Sorted<char, N>,
+    delims: Sorted<char, DELIMITERS>,
 }
 
 impl<'s, const N: usize> Iterator for NonEscaped<'s, N> {
