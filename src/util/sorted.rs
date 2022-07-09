@@ -1,5 +1,5 @@
-use std::{borrow::Borrow, fmt::Debug, ops::Deref};
 use super::{SortedError, SortedSlice};
+use std::{borrow::Borrow, fmt::Debug, ops::Deref};
 
 /// Represents a `[T; N]` that is guaranteed to be sorted by [`T: PartialOrd`][pord]. Unlike
 /// [Sorted][sorted] this is not a [DST][dst] and thus has a slightly different API.
@@ -212,10 +212,15 @@ impl<T: PartialOrd, const N: usize> Borrow<SortedSlice<T>> for Sorted<T, N> {
     }
 }
 
-impl<T: PartialOrd, const N: usize> TryFrom<[T; N]> for Sorted<T, N> {
-    type Error = SortedError;
+impl<T: Ord, const N: usize> From<[T; N]> for Sorted<T, N> {
+    fn from(value: [T; N]) -> Self {
+        Sorted::new_sorted(value)
+    }
+}
 
-    fn try_from(value: [T; N]) -> Result<Self, Self::Error> {
-        Sorted::new(value)
+impl<T: PartialOrd> From<T> for Sorted<T, 1> {
+    fn from(value: T) -> Self {
+        // SAFETY: single item must not be sorted
+        unsafe { Sorted::new_unchecked([value]) }
     }
 }

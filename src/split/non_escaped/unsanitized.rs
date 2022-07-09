@@ -1,5 +1,5 @@
 use super::NonEscapedError;
-use crate::{split, util::SortedSlice};
+use crate::{split, util::Sorted};
 use std::iter::FusedIterator;
 
 /// Splits a [str] by the given delimiter unless it is preceded by a given escape. This is a
@@ -26,7 +26,7 @@ use std::iter::FusedIterator;
 /// let parts: Vec<_> = split::non_escaped(
 ///     r"this string\ is split by\ spaces unless they are\ escaped",
 ///     '\\',
-///     [' '][..].try_into()?
+///     [' '].try_into()?
 /// )?.collect();
 ///
 /// // nothing is sanitized, the escapes are kept
@@ -45,11 +45,11 @@ use std::iter::FusedIterator;
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped<'s, 'd>(
-    input: &'s str,
+pub fn non_escaped<'input, const DELIMITERS: usize>(
+    input: &'input str,
     esc: char,
-    delims: &'d SortedSlice<char>,
-) -> Result<NonEscaped<'s, 'd>, NonEscapedError> {
+    delims: Sorted<char, DELIMITERS>,
+) -> Result<NonEscaped<'input, DELIMITERS>, NonEscapedError> {
     if delims.binary_search(&esc).is_ok() {
         Err(NonEscapedError::EscapeContainsDelimiter(esc))
     } else {
@@ -64,13 +64,13 @@ pub fn non_escaped<'s, 'd>(
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
 /// created by the [`non_escaped`] method, see it's documentation for more info.
 #[derive(Debug)]
-pub struct NonEscaped<'s, 'd> {
+pub struct NonEscaped<'s, const N: usize> {
     rest: Option<&'s str>,
     esc: char,
-    delims: &'d SortedSlice<char>,
+    delims: Sorted<char, N>,
 }
 
-impl<'s, 'd> Iterator for NonEscaped<'s, 'd> {
+impl<'s, const N: usize> Iterator for NonEscaped<'s, N> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -110,7 +110,7 @@ impl<'s, 'd> Iterator for NonEscaped<'s, 'd> {
     }
 }
 
-impl<'s, 'd> FusedIterator for NonEscaped<'s, 'd> {}
+impl<'s, const N: usize> FusedIterator for NonEscaped<'s, N> {}
 
 #[cfg(test)]
 mod tests {
@@ -120,7 +120,7 @@ mod tests {
         ($split:expr; $from:literal => [$($to:literal),+]) => {
             eprintln!("boundary");
             assert_eq!(
-                non_escaped($from, '\\', $split[..].try_into().unwrap())
+                non_escaped($from, '\\', $split.try_into().unwrap())
                     .expect("delim and escape are not the same")
                     .collect::<Vec<_>>(),
                 vec![$($to),+]
@@ -130,13 +130,13 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert!(non_escaped("", '\\', [':'][..].try_into().unwrap()).is_ok());
+        assert!(non_escaped("", '\\', [':'].try_into().unwrap()).is_ok());
     }
 
     #[test]
     fn delim_is_escape() {
         assert_eq!(
-            non_escaped("", '\\', ['\\'][..].try_into().unwrap()).unwrap_err(),
+            non_escaped("", '\\', ['\\'].try_into().unwrap()).unwrap_err(),
             NonEscapedError::EscapeContainsDelimiter('\\')
         );
     }

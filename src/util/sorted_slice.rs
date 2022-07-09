@@ -9,7 +9,7 @@ use std::{borrow::Borrow, fmt::Debug, ops::Deref};
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # use strtools::util::SortedSlice;
 /// // only checks if the slice is sorted
-/// let sorted: &SortedSlice<_> = ['a', 'b', 'c'][..].try_into()?;
+/// let sorted: &SortedSlice<_> = SortedSlice::new(&['a', 'b', 'c'])?;
 ///
 /// // sorts the slice and is therefore not fallible, requires T: Ord, the returned slice is
 /// // immutable
@@ -263,10 +263,28 @@ impl<'s, T: PartialOrd> TryFrom<&'s [T]> for &'s SortedSlice<T> {
     }
 }
 
-impl<'s, T: PartialOrd> TryFrom<&'s mut [T]> for &'s SortedSlice<T> {
-    type Error = SortedError;
+impl<'s, T: Ord> From<&'s mut [T]> for &'s SortedSlice<T> {
+    fn from(value: &'s mut [T]) -> Self {
+        SortedSlice::new_sorted(value)
+    }
+}
 
-    fn try_from(value: &'s mut [T]) -> Result<Self, Self::Error> {
-        SortedSlice::new(value)
+impl<'s, T: Ord, const N: usize> From<&'s mut [T; N]> for &'s SortedSlice<T> {
+    fn from(value: &'s mut [T; N]) -> Self {
+        SortedSlice::new_sorted(value)
+    }
+}
+
+impl<'s, T: PartialOrd> From<&'s T> for &'s SortedSlice<T> {
+    fn from(value: &'s T) -> Self {
+        // SAFETY: single item must not be sorted
+        unsafe { SortedSlice::new_unchecked(super::slice_from_single(value)) }
+    }
+}
+
+impl<'s, T: PartialOrd> From<&'s mut T> for &'s SortedSlice<T> {
+    fn from(value: &'s mut T) -> Self {
+        // SAFETY: single item must not be sorted
+        unsafe { SortedSlice::new_unchecked(super::slice_from_single_mut(value)) }
     }
 }

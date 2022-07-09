@@ -1,4 +1,4 @@
-use crate::util::SortedSlice;
+use crate::util::Sorted;
 
 use super::NonEscapedError;
 use std::{borrow::Cow, iter::Peekable, str::CharIndices};
@@ -31,7 +31,7 @@ use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 /// let parts: Vec<_> = split::non_escaped_sanitize(
 ///     r"this string\ is split by\ spaces unless they are\ escaped",
 ///     '\\',
-///     [' '][..].try_into().unwrap()
+///     [' '].try_into()?
 /// )?.collect();
 ///
 /// // the splits are sanitized, the escapes are removed
@@ -50,11 +50,11 @@ use std::{borrow::Cow, iter::Peekable, str::CharIndices};
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped_sanitize<'s, 'd>(
+pub fn non_escaped_sanitize<'s, 'd, const N: usize>(
     input: &'s str,
     esc: char,
-    delims: &'d SortedSlice<char>,
-) -> Result<NonEscapedSanitize<'s, 'd>, NonEscapedError> {
+    delims: Sorted<char, N>,
+) -> Result<NonEscapedSanitize<'s, N>, NonEscapedError> {
     if delims.binary_search(&esc).is_ok() {
         Err(NonEscapedError::EscapeContainsDelimiter(esc))
     } else {
@@ -76,16 +76,16 @@ pub fn non_escaped_sanitize<'s, 'd>(
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
 /// created by the [`non_escaped_sanitize`] method, see it's documentation for more info.
 #[derive(Debug)]
-pub struct NonEscapedSanitize<'s, 'd> {
-    input: &'s str,
+pub struct NonEscapedSanitize<'input, const DELIMITERS: usize> {
+    input: &'input str,
     done: usize,
     esc: char,
-    delims: &'d SortedSlice<char>,
-    iter: Peekable<CharIndices<'s>>,
-    curr: Option<Cow<'s, str>>,
+    delims: Sorted<char, DELIMITERS>,
+    iter: Peekable<CharIndices<'input>>,
+    curr: Option<Cow<'input, str>>,
 }
 
-impl<'s, 'd> Iterator for NonEscapedSanitize<'s, 'd> {
+impl<'s, const N: usize> Iterator for NonEscapedSanitize<'s, N> {
     type Item = Cow<'s, str>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -154,7 +154,7 @@ mod tests {
     macro_rules! test_impl {
         ($split:expr; $from:literal => [$($to:literal),+]) => {
             assert_eq!(
-                non_escaped_sanitize($from, '\\', $split[..].try_into().unwrap())
+                non_escaped_sanitize($from, '\\', $split.try_into().unwrap())
                     .expect("delim and escape are not the same")
                     .collect::<Vec<_>>(),
                 vec![$($to),+]
@@ -164,13 +164,13 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert!(non_escaped_sanitize("", '\\', [':'][..].try_into().unwrap()).is_ok());
+        assert!(non_escaped_sanitize("", '\\', [':'].try_into().unwrap()).is_ok());
     }
 
     #[test]
     fn delim_is_escape() {
         assert_eq!(
-            non_escaped_sanitize("", '\\', ['\\'][..].try_into().unwrap()).unwrap_err(),
+            non_escaped_sanitize("", '\\', ['\\'].try_into().unwrap()).unwrap_err(),
             NonEscapedError::EscapeContainsDelimiter('\\')
         );
     }
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn copy_on_sanitize() {
         // only copy when sanitizing an escape
-        let res = non_escaped_sanitize(r"a\:aa:bbb:cc\.c:ddd", '\\', [':'][..].try_into().unwrap())
+        let res = non_escaped_sanitize(r"a\:aa:bbb:cc\.c:ddd", '\\', [':'].try_into().unwrap())
             .expect("delim and escape are not the same")
             .collect::<Vec<_>>();
 
