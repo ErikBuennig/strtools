@@ -11,5 +11,5 @@ pub use unsanitized::*;
 #[error("a delimiter cannot be it's own escape char {0}")]
 pub enum NonEscapedError {
     /// Indicates that a given escape char was also given as a delimiter.
-    EscapeIsDelimiter(char),
+    EscapeContainsDelimiter(char),
 }

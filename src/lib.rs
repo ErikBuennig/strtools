@@ -8,7 +8,7 @@
 //!
 //! // split a string by some separator but ignore escaped ones
 //! let parts: Vec<_> = r"this string\ is split by\ spaces unless they are\ escaped"
-//!     .split_non_escaped_sanitize('\\', ' ')?
+//!     .split_non_escaped_sanitize('\\', [' '][..].try_into()?)?
 //!     .collect();
 //!
 //! assert_eq!(
@@ -31,7 +31,7 @@
 //! use strtools::StrTools;
 //!
 //! let parts: Vec<_> = r"\.\/.*s(\d\d)e(\d\d[a-d])/S$1E$2/gu"
-//!     .split_non_escaped_sanitize('\\', '/')?
+//!     .split_non_escaped_sanitize('\\', ['/'][..].try_into()?)?
 //!     .collect();
 //!
 //! // parsing user input regex rules like `<rule>/<replace>/<flags>`
@@ -65,7 +65,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use parse::{FromStrBack, FromStrFront};
-use util::Sorted;
+use util::{Sorted, SortedSlice};
 
 pub mod escape;
 pub mod find;
@@ -121,7 +121,11 @@ pub trait StrTools: util::sealed::Sealed {
     /// use strtools::StrTools;
     ///
     /// let value = r"Pa\rt0:Part1:Part2\:StillPart2";
-    /// let parts: Vec<_> = value.split_non_escaped_sanitize('\\', ':')?.collect();
+    /// let parts: Vec<_> = value.split_non_escaped_sanitize(
+    ///     '\\',
+    ///     [':'][..].try_into().unwrap()
+    /// )?
+    /// .collect();
     ///
     /// // notice that the escape char was removed in Part2 but not in Part1 as it's just used as
     /// // an indicator for escaping the delimiters or escapes themselves
@@ -129,11 +133,11 @@ pub trait StrTools: util::sealed::Sealed {
     /// # Ok(())
     /// # }
     /// ```
-    fn split_non_escaped_sanitize(
-        &self,
+    fn split_non_escaped_sanitize<'s, 'd>(
+        &'s self,
         esc: char,
-        delim: char,
-    ) -> Result<split::NonEscapedSanitize<'_>, split::NonEscapedError>;
+        delims: &'d SortedSlice<char>,
+    ) -> Result<split::NonEscapedSanitize<'s, 'd>, split::NonEscapedError>;
 
     /// Splits a [`str`] by the given delimiters unless they are preceded by an escape.
     /// Escapes before significant chars are removed, significant chars are the delimiters and the
@@ -156,18 +160,18 @@ pub trait StrTools: util::sealed::Sealed {
     /// use strtools::StrTools;
     ///
     /// let value = r"Pa\rt0:Part1:Part2\:StillPart2";
-    /// let parts: Vec<_> = value.split_non_escaped('\\', ':')?.collect();
+    /// let parts: Vec<_> = value.split_non_escaped('\\', [':'][..].try_into().unwrap())?.collect();
     ///
     /// // no sanitization is done here the separators are simply ignored
     /// assert_eq!(parts, [r"Pa\rt0", "Part1", r"Part2\:StillPart2"]);
     /// # Ok(())
     /// # }
     /// ```
-    fn split_non_escaped(
-        &self,
+    fn split_non_escaped<'s, 'd>(
+        &'s self,
         esc: char,
-        delim: char,
-    ) -> Result<split::NonEscaped<'_>, split::NonEscapedError>;
+        delims: &'d SortedSlice<char>,
+    ) -> Result<split::NonEscaped<'s, 'd>, split::NonEscapedError>;
 
     /// Attempts to parse `T` from the beginning of the [`str`], returns the rest of the `input` and
     /// `T` if parsing succeeded.
@@ -209,20 +213,20 @@ impl StrTools for str {
         split::n_times(self, indices)
     }
 
-    fn split_non_escaped_sanitize<'d>(
-        &self,
+    fn split_non_escaped_sanitize<'s, 'd>(
+        &'s self,
         esc: char,
-        delim: char,
-    ) -> Result<split::NonEscapedSanitize<'_>, split::NonEscapedError> {
-        split::non_escaped_sanitize(self, esc, delim)
+        delims: &'d SortedSlice<char>,
+    ) -> Result<split::NonEscapedSanitize<'s, 'd>, split::NonEscapedError> {
+        split::non_escaped_sanitize(self, esc, delims)
     }
 
-    fn split_non_escaped<'d>(
-        &self,
+    fn split_non_escaped<'s, 'd>(
+        &'s self,
         esc: char,
-        delim: char,
-    ) -> Result<split::NonEscaped<'_>, split::NonEscapedError> {
-        split::non_escaped(self, esc, delim)
+        delims: &'d SortedSlice<char>,
+    ) -> Result<split::NonEscaped<'s, 'd>, split::NonEscapedError> {
+        split::non_escaped(self, esc, delims)
     }
 
     fn parse_front<T: FromStrFront>(&self) -> Result<(T, &str), T::Error> {

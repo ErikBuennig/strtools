@@ -1,5 +1,5 @@
 use super::NonEscapedError;
-use crate::split;
+use crate::{split, util::SortedSlice};
 use std::iter::FusedIterator;
 
 /// Splits a [str] by the given delimiter unless it is preceded by a given escape. This is a
@@ -26,7 +26,7 @@ use std::iter::FusedIterator;
 /// let parts: Vec<_> = split::non_escaped(
 ///     r"this string\ is split by\ spaces unless they are\ escaped",
 ///     '\\',
-///     ' '
+///     [' '][..].try_into()?
 /// )?.collect();
 ///
 /// // nothing is sanitized, the escapes are kept
@@ -45,14 +45,18 @@ use std::iter::FusedIterator;
 /// # Ok(())
 /// # }
 /// ```
-pub fn non_escaped(input: &str, esc: char, delim: char) -> Result<NonEscaped<'_>, NonEscapedError> {
-    if esc == delim {
-        Err(NonEscapedError::EscapeIsDelimiter(esc))
+pub fn non_escaped<'s, 'd>(
+    input: &'s str,
+    esc: char,
+    delims: &'d SortedSlice<char>,
+) -> Result<NonEscaped<'s, 'd>, NonEscapedError> {
+    if delims.binary_search(&esc).is_ok() {
+        Err(NonEscapedError::EscapeContainsDelimiter(esc))
     } else {
         Ok(NonEscaped {
             rest: Some(input),
             esc,
-            delim,
+            delims,
         })
     }
 }
@@ -60,13 +64,13 @@ pub fn non_escaped(input: &str, esc: char, delim: char) -> Result<NonEscaped<'_>
 /// An [Iterator] that yields parts of a [str] that are separated by a delimiter. This struct is
 /// created by the [`non_escaped`] method, see it's documentation for more info.
 #[derive(Debug)]
-pub struct NonEscaped<'s> {
+pub struct NonEscaped<'s, 'd> {
     rest: Option<&'s str>,
     esc: char,
-    delim: char,
+    delims: &'d SortedSlice<char>,
 }
 
-impl<'s> Iterator for NonEscaped<'s> {
+impl<'s, 'd> Iterator for NonEscaped<'s, 'd> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -91,7 +95,7 @@ impl<'s> Iterator for NonEscaped<'s> {
             }
 
             // normal delimiter
-            if !is_escaped && ch == self.delim {
+            if !is_escaped && self.delims.binary_search(&ch).is_ok() {
                 // SAFETY: correctness of index relies on str::char_indices
                 let (result, _, rest) = unsafe { split::char_boundary_unchecked(rest, idx) };
                 self.rest = Some(rest);
@@ -106,7 +110,7 @@ impl<'s> Iterator for NonEscaped<'s> {
     }
 }
 
-impl<'s> FusedIterator for NonEscaped<'s> {}
+impl<'s, 'd> FusedIterator for NonEscaped<'s, 'd> {}
 
 #[cfg(test)]
 mod tests {
@@ -116,7 +120,7 @@ mod tests {
         ($split:expr; $from:literal => [$($to:literal),+]) => {
             eprintln!("boundary");
             assert_eq!(
-                non_escaped($from, '\\', $split)
+                non_escaped($from, '\\', $split[..].try_into().unwrap())
                     .expect("delim and escape are not the same")
                     .collect::<Vec<_>>(),
                 vec![$($to),+]
@@ -126,46 +130,46 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert!(non_escaped("", '\\', ':').is_ok());
+        assert!(non_escaped("", '\\', [':'][..].try_into().unwrap()).is_ok());
     }
 
     #[test]
     fn delim_is_escape() {
         assert_eq!(
-            non_escaped("", '\\', '\\').unwrap_err(),
-            NonEscapedError::EscapeIsDelimiter('\\')
+            non_escaped("", '\\', ['\\'][..].try_into().unwrap()).unwrap_err(),
+            NonEscapedError::EscapeContainsDelimiter('\\')
         );
     }
 
     #[test]
     fn no_escape() {
-        test_impl!(':'; r"aaaaa:bbbbb" => ["aaaaa", "bbbbb"]);
+        test_impl!([':']; r"aaaaa:bbbbb" => ["aaaaa", "bbbbb"]);
     }
 
     #[test]
     fn single_escape() {
-        test_impl!(':'; r"aa\:aa:bbbb" => [r"aa\:aa", "bbbb"]);
-        test_impl!(':'; r"\:aaaa:bbbb" => [r"\:aaaa", "bbbb"]);
-        test_impl!(':'; r"aaaa\::bbbb" => [r"aaaa\:", "bbbb"]);
-        test_impl!(':'; r"aaaa:bb\:bb" => ["aaaa", r"bb\:bb"]);
-        test_impl!(':'; r"aaaa:\:bbbb" => ["aaaa", r"\:bbbb"]);
-        test_impl!(':'; r"aaaa:bbbb\:" => ["aaaa", r"bbbb\:"]);
+        test_impl!([':']; r"aa\:aa:bbbb" => [r"aa\:aa", "bbbb"]);
+        test_impl!([':']; r"\:aaaa:bbbb" => [r"\:aaaa", "bbbb"]);
+        test_impl!([':']; r"aaaa\::bbbb" => [r"aaaa\:", "bbbb"]);
+        test_impl!([':']; r"aaaa:bb\:bb" => ["aaaa", r"bb\:bb"]);
+        test_impl!([':']; r"aaaa:\:bbbb" => ["aaaa", r"\:bbbb"]);
+        test_impl!([':']; r"aaaa:bbbb\:" => ["aaaa", r"bbbb\:"]);
     }
 
     #[test]
     fn double_escapes() {
-        test_impl!(':'; r"aaaa\\:bbbb" => [r"aaaa\\", "bbbb"]);
-        test_impl!(':'; r"aaaa\\\:bbbb" => [r"aaaa\\\:bbbb"]);
-        test_impl!(':'; r"aaaa\\\\:bbbb" => [r"aaaa\\\\", "bbbb"]);
-        test_impl!(':'; r"aaaa\\\\\:bbbb" => [r"aaaa\\\\\:bbbb"]);
+        test_impl!([':']; r"aaaa\\:bbbb" => [r"aaaa\\", "bbbb"]);
+        test_impl!([':']; r"aaaa\\\:bbbb" => [r"aaaa\\\:bbbb"]);
+        test_impl!([':']; r"aaaa\\\\:bbbb" => [r"aaaa\\\\", "bbbb"]);
+        test_impl!([':']; r"aaaa\\\\\:bbbb" => [r"aaaa\\\\\:bbbb"]);
     }
 
     #[test]
     fn ignore_other_escapes() {
-        test_impl!(':'; r"aa\.aa:bbbbb" => [r"aa\.aa", "bbbbb"]);
-        test_impl!(':'; r"\.aaaa:bbbbb" => [r"\.aaaa", "bbbbb"]);
-        test_impl!(':'; r"aaaa\.:bbbbb" => [r"aaaa\.", "bbbbb"]);
-        test_impl!(':'; r"aaaa:\.bbbbb" => ["aaaa", r"\.bbbbb"]);
-        test_impl!(':'; r"aaaa:bbbbb\." => ["aaaa", r"bbbbb\."]);
+        test_impl!([':']; r"aa\.aa:bbbbb" => [r"aa\.aa", "bbbbb"]);
+        test_impl!([':']; r"\.aaaa:bbbbb" => [r"\.aaaa", "bbbbb"]);
+        test_impl!([':']; r"aaaa\.:bbbbb" => [r"aaaa\.", "bbbbb"]);
+        test_impl!([':']; r"aaaa:\.bbbbb" => ["aaaa", r"\.bbbbb"]);
+        test_impl!([':']; r"aaaa:bbbbb\." => ["aaaa", r"bbbbb\."]);
     }
 }
