@@ -46,6 +46,10 @@
 #![feature(
     associated_type_defaults,
     cow_is_borrowed,
+    // https://github.com/rust-lang/rust/issues/57349
+    // this should be fine, the only listed regression is very niche use case, but this would block
+    // stabilization
+    const_mut_refs,
     decl_macro,
     is_sorted,
     let_chains

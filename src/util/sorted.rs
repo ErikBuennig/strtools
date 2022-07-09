@@ -1,51 +1,42 @@
-use std::{borrow::Borrow, ops::Deref};
+use std::{borrow::Borrow, fmt::Debug, ops::Deref};
+use super::{SortedError, SortedSlice};
 
-/// An [Error][e] indicating that a `[T]` could not be turned into a [`Sorted`] because it was
-/// not sorted according to the `REVERSE` const parameter.
-///
-/// [e]: std::error::Error
-#[derive(thiserror::Error, Debug)]
-pub enum SortedSliceError {
-    /// Indicates that a slice was not sorted.
-    #[error("the slice was not sorted")]
-    SliceNotSorted,
-}
-
-/// Represents a `[T]` that is guaranteed to be sorted by [`T: PartialOrd`][pord]. This is a
-/// [DST][dst], therefore constructors only return references.
+/// Represents a `[T; N]` that is guaranteed to be sorted by [`T: PartialOrd`][pord]. Unlike
+/// [Sorted][sorted] this is not a [DST][dst] and thus has a slightly different API.
 ///
 /// # Examples
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # use strtools::util::Sorted;
-/// // only checks if the slice is sorted
-/// let sorted: &Sorted<_> = ['a', 'b', 'c'][..].try_into()?;
+/// // only checks if the array is sorted
+/// let sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
 ///
-/// // sorts the slice and is therefore not fallible, requires T: Ord, the returned slice is
+/// // sorts the slice and is therefore not fallible, requires T: Ord, the returned array is
 /// // immutable
-/// let sorted: &Sorted<_> = Sorted::new_sorted(&mut ['a', 'c', 'b']);
+/// let sorted: Sorted<_, 3> = Sorted::new_sorted(['a', 'c', 'b']);
 /// # Ok(())
 /// # }
 /// ```
 ///
+/// [sorted]: super::Sorted
 /// [dst]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 /// [pord]: PartialOrd
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Sorted<T: PartialOrd>([T]);
+pub struct Sorted<T: PartialOrd, const N: usize>([T; N]);
 
-impl<T: PartialOrd> Sorted<T> {
-    /// Creates a new [`Sorted`] from the given `slice` if it was sorted.
+impl<T: PartialOrd, const N: usize> Sorted<T, N> {
+    /// Creates a new [`Sorted`] from the given `array` if it was sorted.
     ///
     /// # Errors
     /// Returns an error if:
-    /// - `slices` was not sorted
+    /// - `array` was not sorted
     ///
     /// # Examples
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use strtools::util::Sorted;
-    /// let sorted: &Sorted<_> = Sorted::new(&['a', 'b', 'c'])?;
+    /// let sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
     /// # Ok(())
     /// # }
     /// ```
@@ -54,223 +45,177 @@ impl<T: PartialOrd> Sorted<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use strtools::util::Sorted;
     /// // this is not sorted
-    /// let sorted: &Sorted<_> = Sorted::new(&['a', 'c', 'b'])?;
+    /// let sorted: Sorted<_, 3> = Sorted::new(['a', 'c', 'b'])?;
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
-    pub fn new(slice: &[T]) -> Result<&Self, SortedSliceError> {
-        if slice.is_sorted() {
-            // SAFETY: the slice is sorted according to R
-            Ok(unsafe { Self::new_unchecked(slice) })
+    pub fn new(array: [T; N]) -> Result<Self, SortedError> {
+        if array.is_sorted() {
+            // SAFETY: the array is sorted according to R
+            Ok(unsafe { Self::new_unchecked(array) })
         } else {
-            Err(SortedSliceError::SliceNotSorted)
+            Err(SortedError::NotSorted)
         }
     }
 
-    /// Sorts the given slice and creates a new mutable [`Sorted`] from it.
+    /// Sorts the given array and creates a new mutable [`Sorted`] from it.
     ///
     /// # Examples
     /// ```
     /// # use strtools::util::Sorted;
-    /// let mut slice = ['a', 'c', 'b'];
-    /// let sorted: &Sorted<_> = Sorted::new_sorted(&mut slice);
-    /// assert_eq!(sorted.as_slice(), &['a', 'b', 'c']);
+    /// let sorted: Sorted<_, 3> = Sorted::new_sorted(['a', 'c', 'b']);
+    /// assert_eq!(sorted.as_array_ref(), &['a', 'b', 'c']);
     /// ```
     #[inline]
-    pub fn new_sorted(slice: &mut [T]) -> &Self
+    pub fn new_sorted(mut array: [T; N]) -> Self
     where
         T: Ord,
     {
-        slice.sort();
+        array.sort();
 
-        // SAFETY: the slice has been sorted
-        unsafe { Self::new_unchecked(slice) }
+        // SAFETY: the array has been sorted
+        unsafe { Self::new_unchecked(array) }
     }
 
-    /// Creates a new [`Sorted`] from the given `slice`, assuming it was sorted.
+    /// Creates a new [`Sorted`] from the given `array`, assuming it was sorted.
     ///
     /// # Safety
     /// The caller must ensure that:
-    /// - `slice` is sorted
+    /// - `array` is sorted
     ///
     /// # Examples
     /// ```
     /// # use strtools::util::Sorted;
-    /// let sorted: &Sorted<_> = unsafe { Sorted::new_unchecked(&['a', 'b', 'c']) };
+    /// let sorted: Sorted<_, 3> = unsafe { Sorted::new_unchecked(['a', 'b', 'c']) };
     /// ```
     /// Violation of invariants:
     /// ```
     /// # use strtools::util::Sorted;
     /// // this is not sorted, Sorted invariants are violated
-    /// let sorted: &Sorted<_> = unsafe { Sorted::new_unchecked(&['a', 'c', 'b']) };
+    /// let sorted: Sorted<_, 3> = unsafe { Sorted::new_unchecked(['a', 'c', 'b']) };
     /// ```
     #[inline]
-    pub const unsafe fn new_unchecked(slice: &[T]) -> &Self {
-        // SAFETY:
-        // - the caller must ensure that the slice is sorted
-        // - #[repr(transparent)] ensures layout compatibility of &[T] and &Self
-        // - the lifetime of &Self is the same as `slice`
-        unsafe { std::mem::transmute(slice) }
+    pub const unsafe fn new_unchecked(array: [T; N]) -> Self {
+        Self(array)
     }
 
-    /// Creates a new mutable [`Sorted`] from the given `slice` if it was sorted.
-    ///
-    /// # Safety
-    /// The caller must ensure that:
-    /// - if the slice is mutated, it remains sorted according to `T: PartialOrd`
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - `slices` was not sorted
+    /// Borrows this as a reference to an array `&[T; N]`.
     ///
     /// # Examples
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use strtools::util::Sorted;
-    /// let sorted: &mut Sorted<_> = unsafe { Sorted::new_mut(&mut ['a', 'b', 'c'])? };
-    /// # Ok(())
-    /// # }
-    /// ```
-    /// This will return an error:
-    /// ```should_panic
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use strtools::util::Sorted;
-    /// // this is not sorted
-    /// let sorted: &mut Sorted<_> = unsafe { Sorted::new_mut(&mut ['a', 'c', 'b'])? };
+    /// let sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
+    /// let array_ref: &[char; 3] = sorted.as_array_ref();
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
-    pub unsafe fn new_mut(slice: &mut [T]) -> Result<&mut Self, SortedSliceError> {
-        if slice.is_sorted() {
-            // SAFETY: the slice is sorted according to R
-            Ok(unsafe { Self::new_mut_unchecked(slice) })
-        } else {
-            Err(SortedSliceError::SliceNotSorted)
-        }
-    }
-
-    /// Sorts the given slice and creates a new mutable [`Sorted`] from it.
-    ///
-    /// # Safety
-    /// The caller must ensure that:
-    /// - `slice` remains sorted according to `T: PartialOrd` if mutated
-    ///
-    /// # Examples
-    /// ```
-    /// # use strtools::util::Sorted;
-    /// let mut slice = ['a', 'c', 'b'];
-    /// let sorted: &Sorted<_> = unsafe { Sorted::new_sorted_mut(&mut slice) };
-    /// assert_eq!(sorted.as_slice(), &['a', 'b', 'c']);
-    /// ```
-    #[inline]
-    pub unsafe fn new_sorted_mut(slice: &mut [T]) -> &mut Self
-    where
-        T: Ord,
-    {
-        slice.sort();
-
-        // SAFETY: the slice has been sorted
-        unsafe { Self::new_mut_unchecked(slice) }
-    }
-
-    // TODO: make const once `const_mut_refs` stabilizes
-    //       see https://github.com/rust-lang/rust/issues/57349
-
-    /// Creates a new [`Sorted`] from the given `slice`, assuming it was sorted.
-    ///
-    /// # Safety
-    /// The caller must ensure that:
-    /// - `slice` is sorted
-    ///
-    /// # Examples
-    /// ```
-    /// # use strtools::util::Sorted;
-    /// let sorted: &mut Sorted<_> = unsafe { Sorted::new_mut_unchecked(&mut ['a', 'b', 'c']) };
-    /// ```
-    /// Violation of invariants:
-    /// ```
-    /// # use strtools::util::Sorted;
-    /// // this is not sorted, Sorted invariants are violated
-    /// let sorted: &mut Sorted<_> = unsafe { Sorted::new_mut_unchecked(&mut ['a', 'c', 'b']) };
-    /// ```
-    #[inline]
-    pub unsafe fn new_mut_unchecked(slice: &mut [T]) -> &mut Self {
-        // SAFETY:
-        // - the caller must ensure that the slice is sorted
-        // - #[repr(transparent)] ensures layout compatibility of &[T] and &Self
-        // - the lifetime of &Self is the same as `slice`
-        unsafe { std::mem::transmute(slice) }
-    }
-
-    /// Borrows this as a slice of `[T]`.
-    ///
-    /// # Examples
-    /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use strtools::util::Sorted;
-    /// let sorted: &Sorted<_> = ['a', 'b', 'c'][..].try_into()?;
-    /// let slice: &[char] = sorted.as_slice();
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
+    pub const fn as_array_ref(&self) -> &[T; N] {
         &self.0
     }
 
-    /// Borrows this as a mutable slice of `[T]`. This function is not unsafe as getting a
-    /// `&mut Sorted` is already unsafe.
+    /// Borrows this as a mutable reference to an array `&mut [T; N]`.
+    ///
+    /// # Safety
+    /// The caller must ensure that:
+    /// - `array` remains sorted according to `T: PartialOrd` if mutated
+    ///
     ///
     /// # Examples
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use strtools::util::Sorted;
-    /// let mut slice = ['a', 'b', 'c'];
-    /// let sorted: &mut Sorted<_> = unsafe { Sorted::new_mut(&mut slice)? };
-    /// let slice: &[char] = sorted.as_slice_mut();
+    /// let mut sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
+    /// let array_mut: &[char; 3] = unsafe { sorted.as_array_mut() };
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
-    pub fn as_slice_mut(&mut self) -> &mut [T] {
+    pub const unsafe fn as_array_mut(&mut self) -> &mut [T; N] {
         &mut self.0
     }
+
+    /// Borrows this as a [`SortedSlice<T>`].
+    ///
+    /// # Examples
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use strtools::util::{Sorted, SortedSlice};
+    /// let sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
+    /// let sorted_slice: &SortedSlice<char> = sorted.as_sorted_slice();
+    /// # Ok(())
+    /// # }
+    pub const fn as_sorted_slice(&self) -> &SortedSlice<T> {
+        // SAFETY: the array is sorted
+        unsafe { SortedSlice::new_unchecked(&self.0) }
+    }
+
+    /// Borrows this as a [`SortedSlice<T>`].
+    ///
+    /// # Safety
+    /// The caller must ensure that:
+    /// - `array` remains sorted according to `T: PartialOrd` if mutated
+    ///
+    ///
+    /// # Examples
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use strtools::util::{Sorted, SortedSlice};
+    /// let mut sorted: Sorted<_, 3> = Sorted::new(['a', 'b', 'c'])?;
+    /// let sorted_slice_mut: &mut SortedSlice<char> = unsafe { sorted.as_sorted_slice_mut() };
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub const unsafe fn as_sorted_slice_mut(&mut self) -> &mut SortedSlice<T> {
+        // SAFETY: the array is sorted
+        unsafe { SortedSlice::new_unchecked_mut(&mut self.0) }
+    }
 }
 
-impl<T: PartialOrd> Deref for Sorted<T> {
-    type Target = [T];
+impl<T: PartialOrd + Debug, const N: usize> Debug for Sorted<T, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T: PartialOrd, const N: usize> Deref for Sorted<T, N> {
+    type Target = [T; N];
 
     fn deref(&self) -> &Self::Target {
-        self.as_slice()
+        self.as_array_ref()
     }
 }
 
-impl<T: PartialOrd> AsRef<[T]> for Sorted<T> {
-    fn as_ref(&self) -> &[T] {
-        self.as_slice()
+impl<T: PartialOrd, const N: usize> AsRef<[T; N]> for Sorted<T, N> {
+    fn as_ref(&self) -> &[T; N] {
+        self.as_array_ref()
     }
 }
 
-impl<T: PartialOrd> Borrow<[T]> for Sorted<T> {
-    fn borrow(&self) -> &[T] {
-        self.as_slice()
+impl<T: PartialOrd, const N: usize> Borrow<[T; N]> for Sorted<T, N> {
+    fn borrow(&self) -> &[T; N] {
+        self.as_array_ref()
     }
 }
 
-impl<'s, T: PartialOrd> TryFrom<&'s [T]> for &'s Sorted<T> {
-    type Error = SortedSliceError;
-
-    fn try_from(value: &'s [T]) -> Result<Self, Self::Error> {
-        Sorted::new(value)
+impl<T: PartialOrd, const N: usize> AsRef<SortedSlice<T>> for Sorted<T, N> {
+    fn as_ref(&self) -> &SortedSlice<T> {
+        self.as_sorted_slice()
     }
 }
 
-impl<'s, T: PartialOrd> TryFrom<&'s mut [T]> for &'s Sorted<T> {
-    type Error = SortedSliceError;
+impl<T: PartialOrd, const N: usize> Borrow<SortedSlice<T>> for Sorted<T, N> {
+    fn borrow(&self) -> &SortedSlice<T> {
+        self.as_sorted_slice()
+    }
+}
 
-    fn try_from(value: &'s mut [T]) -> Result<Self, Self::Error> {
+impl<T: PartialOrd, const N: usize> TryFrom<[T; N]> for Sorted<T, N> {
+    type Error = SortedError;
+
+    fn try_from(value: [T; N]) -> Result<Self, Self::Error> {
         Sorted::new(value)
     }
 }

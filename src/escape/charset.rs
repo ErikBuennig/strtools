@@ -1,4 +1,4 @@
-use crate::{split, util::Sorted};
+use crate::{split, util::SortedSlice};
 use std::borrow::Cow;
 
 /// Escapes all chars in `charset` and the `escape` itself inside `input`. The `charset` parameter
@@ -14,15 +14,15 @@ use std::borrow::Cow;
 /// # Examples
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use strtools::{escape, util::Sorted};
+/// use strtools::{escape, util::SortedSlice};
 ///
-/// let sorted: &Sorted<char> = ['a', 'e'][..].try_into()?;
+/// let sorted: &SortedSlice<char> = ['a', 'e'][..].try_into()?;
 /// let escaped = escape::charset("abcdefg", '\\', sorted);
 /// assert_eq!(escaped, r"\abcd\efg");
 /// # Ok(())
 /// # }
 /// ```
-pub fn charset<'s>(input: &'s str, escape: char, charset: &Sorted<char>) -> Cow<'s, str> {
+pub fn charset<'s>(input: &'s str, escape: char, charset: &SortedSlice<char>) -> Cow<'s, str> {
     let mut rest = input;
     let mut result = Cow::Borrowed("");
 
